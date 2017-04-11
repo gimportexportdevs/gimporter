@@ -17,7 +17,8 @@ class importerApp extends App.AppBase {
 
     // Return the initial view of your application here
     function getInitialView() {
-        return [ new importerView(), new importerDelegate() ];
+        var v = new importerView();
+        return [ v, new importerDelegate(v) ];
     }
 
 }

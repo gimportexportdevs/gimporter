@@ -3,9 +3,12 @@ using Toybox.Communications as comm;
 
 class importerView extends Ui.View {
 	var tracks = null;
-
+	var trackurl = null;
+	
     function initialize() {
         View.initialize();
+		tracks = null;
+		trackurl = null;
     }
 
     // Load your resources here
@@ -19,7 +22,7 @@ class importerView extends Ui.View {
     }
 
 	function onReceive(responseCode, data) {
-	    if (responseCode == 104) {
+	    if (responseCode == comm.BLE_CONNECTION_UNAVAILABLE) {
         	System.println("Bluetooth disconnected");
 	    	findDrawableById("t1").setText("Bluetooth disconnected");
 			Ui.requestUpdate();
@@ -59,6 +62,7 @@ class importerView extends Ui.View {
 		
     	if (tracks.size() > 0) {
 	    	findDrawableById("t1").setText(tracks[0]["title"]);
+	    	trackurl = tracks[0]["url"];
 	    }
     	if (tracks.size() > 1) {
 	    	findDrawableById("t2").setText(tracks[1]["title"]);
@@ -78,12 +82,12 @@ class importerView extends Ui.View {
     function onShow() {
         System.println("onShow");
         comm.makeWebRequest("http://127.0.0.1:22222/dir.json", null, 
-        { :method => comm.HTTP_REQUEST_METHOD_GET,
-          :headers => {
-				"Content-Type" => comm.REQUEST_CONTENT_TYPE_URL_ENCODED,
-      			"Accept" => "application/json"
+        {
+        	:method => comm.HTTP_REQUEST_METHOD_GET,
+        	:headers => {
+				"Content-Type" => comm.REQUEST_CONTENT_TYPE_JSON
    			},
-          :responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
+          	:responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
         }, method(:onReceive) );
     }
 
@@ -101,4 +105,53 @@ class importerView extends Ui.View {
     function onHide() {
     }
 
+	function loadTrack() {
+			System.println("loadTrack");
+	
+		if (trackurl == null) {
+			return;
+		}
+		var tracktype = trackurl.substring(trackurl.length()-3, trackurl.length());
+		findDrawableById("t2").setText(tracktype);
+		Ui.requestUpdate();
+		
+		if (tracktype.equals("gpx")) {
+   			findDrawableById("t3").setText("Downloading GPX");
+			Ui.requestUpdate();
+	        comm.makeWebRequest(trackurl, null, 
+	        { 
+	        	:method => comm.HTTP_REQUEST_METHOD_GET,
+	          	:responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_GPX
+	        }, method(:onReceiveTrack) );
+	        	
+		} else if (tracktype.equals("fit")) {
+	   		findDrawableById("t3").setText("Downloading FIT");
+			Ui.requestUpdate();
+	        comm.makeWebRequest(trackurl, null, 
+	        { 
+	        	:method => comm.HTTP_REQUEST_METHOD_GET,
+	          	:responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_FIT        	
+	        }, method(:onReceiveTrack) );
+	        
+        }
+	}
+	function onReceiveTrack(responseCode, data) {
+			System.println("onReceiveTrack");
+	    if (responseCode == comm.BLE_CONNECTION_UNAVAILABLE) {
+        	System.println("Bluetooth disconnected");
+	    	findDrawableById("t1").setText("Bluetooth disconnected");
+			Ui.requestUpdate();
+	    	return;
+	    }
+ 		System.println("Code:"+responseCode);
+    	if (data == null) {
+	    	System.println("data == null");
+	    	findDrawableById("t3").setText("null " + responseCode.toString());
+		} else {
+    		System.println(data.toString());
+    		findDrawableById("t3").setText("Download finished");
+		}
+		Ui.requestUpdate();
+    	return;
+	}
 }
