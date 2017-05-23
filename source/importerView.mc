@@ -30,7 +30,7 @@ class importerView extends Ui.View {
                 }
 
                 System.println("onReceive : ");
-                System.println(data);
+                //System.println(data);
                 if (data == null) {
                         System.println("data == null" + responseCode.toString());
                         findDrawableById("t1").setText("null " + responseCode.toString());
@@ -46,7 +46,7 @@ class importerView extends Ui.View {
                         return;
                 }
 
-                System.println(tracks);
+                //System.println(tracks);
                 if (tracks instanceof Toybox.Lang.Array) {
                         System.println("tracks == Array");
                 } else {
@@ -56,10 +56,11 @@ class importerView extends Ui.View {
                         return;
                 }
 
+/*
                 for (var i = 0; i < tracks.size(); i++) {
                         System.println(tracks[i]["title"] + " - " + tracks[i]["url"]);
                 }
-
+*/
                 if (tracks.size() > 0) {
                         findDrawableById("t1").setText(tracks[0]["title"]);
                         trackurl = tracks[0]["url"];
@@ -115,23 +116,13 @@ class importerView extends Ui.View {
                 findDrawableById("t2").setText(tracktype);
                 Ui.requestUpdate();
 
-                if (tracktype.equals("gpx")) {
-                        findDrawableById("t3").setText("Downloading GPX");
-                        Ui.requestUpdate();
-                        comm.makeWebRequest(trackurl, null,
-                                            {
-                                                    :method => comm.HTTP_REQUEST_METHOD_GET,
-                                                            :responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_GPX
-                                                            }, method(:onReceiveTrack) );
-                } else if (tracktype.equals("fit")) {
-                        findDrawableById("t3").setText("Downloading FIT");
-                        Ui.requestUpdate();
-                        comm.makeWebRequest(trackurl, null,
-                                            {
-                                                    :method => comm.HTTP_REQUEST_METHOD_GET,
-                                                            :responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_FIT
-                                                            }, method(:onReceiveTrack) );
-                }
+                findDrawableById("t3").setText("Downloading FIT");
+                Ui.requestUpdate();
+                comm.makeWebRequest(trackurl, null,
+                                    {
+                                            :method => comm.HTTP_REQUEST_METHOD_GET,
+                                                    :responseType => comm.HTTP_RESPONSE_CONTENT_TYPE_FIT
+                                                    }, method(:onReceiveTrack) );
         }
         function onReceiveTrack(responseCode, data) {
                 System.println("onReceiveTrack");
@@ -142,12 +133,31 @@ class importerView extends Ui.View {
                         return;
                 }
                 System.println("Code:"+responseCode);
-                if (data == null) {
-                        System.println("data == null");
-                        findDrawableById("t3").setText("null " + responseCode.toString());
+                if (responseCode == 200) {
+                
+	                if (data == null) {
+	                        System.println("data == null");
+	                        findDrawableById("t3").setText("null " + responseCode.toString());
+	                } else {
+	                        System.println(data);
+	                        //System.println(data["args"]);
+	                        if (data instanceof Toybox.Lang.Array) {
+	                        	for( var i = 0; i < data.size(); i++ ) {
+			                        System.println("data[" + i.toString() + "] = " + data[i].toString());                	
+	                        	}
+	                        } else if (data instanceof Toybox.Lang.Dictionary) {
+	                        	keys = data.keys();
+	                        	
+	                        	for( var i = 0; i < keys.size(); i++ ) {
+			                        System.println("data['" + keys[i].toString() + "']");                	
+	                        	}
+	                        //} else if (data instanceof Toybox.Lang.String) {
+	                        }
+	                        findDrawableById("t3").setText("Download finished");
+	                }
                 } else {
-                        System.println(data.toString());
-                        findDrawableById("t3").setText("Download finished");
+                    findDrawableById("t2").setText(responseCode.toString());
+                    findDrawableById("t3").setText("Download failed");
                 }
                 Ui.requestUpdate();
                 return;
