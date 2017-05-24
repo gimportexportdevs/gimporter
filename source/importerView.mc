@@ -31,9 +31,10 @@ class importerView extends Ui.View {
 
                 System.println("onReceive : ");
                 //System.println(data);
-                if (data == null) {
+                if (responseCode != 200) {
                         System.println("data == null" + responseCode.toString());
-                        findDrawableById("t1").setText("null " + responseCode.toString());
+                        findDrawableById("t1").setText("Connection failed");
+                        findDrawableById("t2").setText(responseCode.toString());
                         Ui.requestUpdate();
                         return;
                 }
@@ -82,7 +83,7 @@ class importerView extends Ui.View {
         // loading resources into memory.
         function onShow() {
                 System.println("onShow");
-                comm.makeWebRequest("http://127.0.0.1:22222/dir.json", null, 
+                comm.makeWebRequest("http://localhost:22222/dir.json", null, 
                                     {
                                             :method => comm.HTTP_REQUEST_METHOD_GET,
                                                     :headers => {
