@@ -1,7 +1,7 @@
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 
-class importerApp extends App.AppBase {
+class gimporterApp extends App.AppBase {
 
     function initialize() {
         AppBase.initialize();
@@ -17,8 +17,8 @@ class importerApp extends App.AppBase {
 
     // Return the initial view of your application here
     function getInitialView() {
-        var v = new importerView();
-        return [ v, new importerDelegate(v) ];
+        var v = new gimporterView();
+        return [ v, new gimporterDelegate(v) ];
     }
 
 }

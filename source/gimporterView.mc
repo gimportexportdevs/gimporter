@@ -1,30 +1,38 @@
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as comm;
 
-class importerView extends Ui.View {
+class gimporterView extends Ui.View {
         var tracks = null;
-        var trackurl = null;
-
+        var trackindex = 0;
+	var showlist = false;
+	var status = "";
+	var version;
+	var t1;
+	var t2;
+	var t3;
+	var st;
         function initialize() {
                 View.initialize();
                 tracks = null;
-                trackurl = null;
         }
 
         // Load your resources here
         function onLayout(dc) {
                 setLayout(Rez.Layouts.MainLayout(dc));
                 System.println("onLayout");
-                findDrawableById("t1").setText("T1");
-                findDrawableById("t2").setText("T2");
-                findDrawableById("t3").setText("T3");
-                findDrawableById("t4").setText("T4");
+                t1 = findDrawableById("t1");
+                t2 = findDrawableById("t2");
+                t3 = findDrawableById("t3");
+		st = findDrawableById("status");
+		version = Ui.loadResource( Rez.Strings.AppVersion );
         }
 
         function onReceive(responseCode, data) {
+		status = "";
+
                 if (responseCode == comm.BLE_CONNECTION_UNAVAILABLE) {
                         System.println("Bluetooth disconnected");
-                        findDrawableById("t1").setText("Bluetooth disconnected");
+                        status = "Bluetooth disconnected";
                         Ui.requestUpdate();
                         return;
                 }
@@ -33,16 +41,15 @@ class importerView extends Ui.View {
                 //System.println(data);
                 if (responseCode != 200) {
                         System.println("data == null" + responseCode.toString());
-                        findDrawableById("t1").setText("Connection failed");
-                        findDrawableById("t2").setText(responseCode.toString());
+                        status = "Connection failed";
                         Ui.requestUpdate();
                         return;
                 }
-                var tracks = data["tracks"];
+                tracks = data["tracks"];
 
                 if (tracks == null) {
                         System.println("tracks == null");
-                        findDrawableById("t2").setText("null");
+			status = "No tracks";
                         Ui.requestUpdate();
                         return;
                 }
@@ -52,29 +59,14 @@ class importerView extends Ui.View {
                         System.println("tracks == Array");
                 } else {
                         System.println("tracks != Array");
-                        findDrawableById("t2").setText("no Array");
+			status = "No tracks";
+			tracks = null;
                         Ui.requestUpdate();
                         return;
                 }
 
-/*
-                for (var i = 0; i < tracks.size(); i++) {
-                        System.println(tracks[i]["title"] + " - " + tracks[i]["url"]);
-                }
-*/
-                if (tracks.size() > 0) {
-                        findDrawableById("t1").setText(tracks[0]["title"]);
-                        trackurl = tracks[0]["url"];
-                }
-                if (tracks.size() > 1) {
-                        findDrawableById("t2").setText(tracks[1]["title"]);
-                }
-                if (tracks.size() > 2) {
-                        findDrawableById("t3").setText(tracks[2]["title"]);
-                }
-                if (tracks.size() > 3) {
-                        findDrawableById("t4").setText(tracks[3]["title"]);
-                }
+		showlist = true;
+		trackindex = 0;
                 Ui.requestUpdate();
         }
 
@@ -82,7 +74,15 @@ class importerView extends Ui.View {
         // the state of this View and prepare it to be shown. This includes
         // loading resources into memory.
         function onShow() {
-                System.println("onShow");
+		getTracks();
+	}
+
+        function getTracks() {
+                //System.println("onShow");
+		status = "Getting Tracklist";
+		showlist = false;
+		Ui.requestUpdate();
+
                 comm.makeWebRequest("http://localhost:22222/dir.json", null, 
                                     {
                                             :method => comm.HTTP_REQUEST_METHOD_GET,
@@ -93,9 +93,48 @@ class importerView extends Ui.View {
                                                              }, method(:onReceive) );
         }
 
+	function previousTrack() {
+		if (!showlist || (tracks == null)) {
+			return;
+		}
+
+		trackindex = (trackindex - 1 + tracks.size()) % tracks.size();
+		status = "";
+                Ui.requestUpdate();
+
+	}
+
+	function nextTrack() {
+		if (!showlist || (tracks == null)) {
+			return;
+		}
+		trackindex = (trackindex + 1) % tracks.size();
+		status = "";
+                Ui.requestUpdate();
+
+	}
+
         // Update the view
         function onUpdate(dc) {
-                System.println("onUpdate");
+                if ((tracks instanceof Toybox.Lang.Array) && (tracks.size() > 0)) {
+			if (showlist) {
+				t1.setText("⏶⏶⏶");
+				t3.setText("⏷⏷⏷");
+			} else {
+				t1.setText("");
+				t3.setText("");
+			}
+			t2.setText(tracks[trackindex]["title"]);
+		} else {
+			if (showlist) {
+				status = "no tracks!!!";
+			}
+		}
+		if (status.equals("")) {
+			st.setText(version);
+		} else {
+			st.setText(status);
+		}
 
                 // Call the parent onUpdate function to redraw the layout
                 View.onUpdate(dc);
@@ -108,17 +147,17 @@ class importerView extends Ui.View {
         }
 
         function loadTrack() {
+		if (!showlist || (tracks == null)) {
+			return;
+		}
+
                 System.println("loadTrack");
 
-                if (trackurl == null) {
-                        return;
-                }
-                var tracktype = trackurl.substring(trackurl.length()-3, trackurl.length());
-                findDrawableById("t2").setText(tracktype);
-                Ui.requestUpdate();
+		var trackurl = tracks[trackindex]["url"];
 
-                findDrawableById("t3").setText("Downloading FIT");
+                status = "Downloading";
                 Ui.requestUpdate();
+		showlist = false;
                 comm.makeWebRequest(trackurl, null,
                                     {
                                             :method => comm.HTTP_REQUEST_METHOD_GET,
@@ -129,37 +168,40 @@ class importerView extends Ui.View {
                 System.println("onReceiveTrack");
                 if (responseCode == comm.BLE_CONNECTION_UNAVAILABLE) {
                         System.println("Bluetooth disconnected");
-                        findDrawableById("t1").setText("Bluetooth disconnected");
+                        status = "Bluetooth disconnected";
                         Ui.requestUpdate();
                         return;
                 }
-                System.println("Code:"+responseCode);
+
+                System.println("Code: " + responseCode);
+
                 if (responseCode == 200) {
-                
 	                if (data == null) {
 	                        System.println("data == null");
-	                        findDrawableById("t3").setText("null " + responseCode.toString());
+				status = "Download failed";
 	                } else {
+				// TODO: What the heck is in data ???
+
 	                        System.println(data);
 	                        //System.println(data["args"]);
 	                        if (data instanceof Toybox.Lang.Array) {
 	                        	for( var i = 0; i < data.size(); i++ ) {
-			                        System.println("data[" + i.toString() + "] = " + data[i].toString());                	
+			                        System.println("data[" + i.toString() + "] = " + data[i].toString());
 	                        	}
 	                        } else if (data instanceof Toybox.Lang.Dictionary) {
 	                        	keys = data.keys();
-	                        	
+
 	                        	for( var i = 0; i < keys.size(); i++ ) {
-			                        System.println("data['" + keys[i].toString() + "']");                	
+			                        System.println("data['" + keys[i].toString() + "']");
 	                        	}
-	                        //} else if (data instanceof Toybox.Lang.String) {
+					//} else if (data instanceof Toybox.Lang.String) {
 	                        }
-	                        findDrawableById("t3").setText("Download finished");
+	                        status = "Download finished";
 	                }
                 } else {
-                    findDrawableById("t2").setText(responseCode.toString());
-                    findDrawableById("t3").setText("Download failed");
+			status = "Download failed";
                 }
+		showlist = true;
                 Ui.requestUpdate();
                 return;
         }

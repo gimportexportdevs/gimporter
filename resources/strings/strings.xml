@@ -1,9 +1,4 @@
 <strings>
-    <string id="AppName">importer</string>
+    <string id="AppName">gimporter</string>
     <string id="AppVersion">V1</string>
-
-    <string id="prompt">Click the menu button</string>
-
-    <string id="menu_label_1">Item 1</string>
-    <string id="menu_label_2">Item 2</string>
 </strings>

@@ -1,6 +1,6 @@
 using Toybox.WatchUi as Ui;
 
-class importerDelegate extends Ui.BehaviorDelegate {
+class gimporterDelegate extends Ui.BehaviorDelegate {
         var view;
 
         function initialize(v) {
@@ -16,9 +16,32 @@ class importerDelegate extends Ui.BehaviorDelegate {
         function onKey(key) {
                 var k = key.getKey();
                 if (k == Ui.KEY_ENTER || k == Ui.KEY_START || k == Ui.KEY_RIGHT) {
-                        view.loadTrack();
+			if (view.tracks == null) {
+				view.getTracks();
+			} else {
+				view.loadTrack();
+			}
                         return true;
                 }
                 return BehaviorDelegate.onKey(key);
+        }
+
+
+        function onPreviousPage() {
+                view.previousTrack();
+                return true;
+        }
+
+        function onNextPage() {
+                view.nextTrack();
+                return true;
+        }
+
+        function onPreviousMode() {
+		return onPreviousPage();
+        }
+
+        function onNextMode() {
+		return onNextPage();
         }
 }

@@ -1,8 +1,7 @@
 <layout id="MainLayout">
 	<label text="@Strings.AppName" x="center" y="25" font="Gfx.FONT_XTINY"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
-	<label id="t1" x="center" y="50"  font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
-	<label id="t2" x="center" y="85"  font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
-	<label id="t3" x="center" y="120" font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
-	<label id="t4" x="center" y="155" font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
-	<label text="@Strings.AppVersion" x="center" y="190" font="Gfx.FONT_XTINY"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
+	<label id="t1" x="center" y="52"  font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
+	<label id="t2" x="center" y="98"  font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
+	<label id="t3" x="center" y="144" font="Gfx.FONT_MEDIUM" color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
+	<label id="status" text="@Strings.AppVersion" x="center" y="190" font="Gfx.FONT_XTINY"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
 </layout>
