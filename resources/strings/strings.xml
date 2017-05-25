@@ -1,4 +1,13 @@
 <strings>
     <string id="AppName">gimporter</string>
     <string id="AppVersion">V1</string>
+    <string id="PressStart">Press Start</string>
+    <string id="GettingTracklist">Getting Tracklist</string>
+    <string id="BluetoothDisconnected">Bluetooth disconnected</string>
+    <string id="ConnectionFailed">Connection failed</string>
+    <string id="trackChooserTitle">Select Track</string>
+    <string id="DownloadFailed">Download failed</string>
+    <string id="DownloadComplete">Download complete</string>
+    <string id="Downloading">Downloading</string>
+    <string id="NoTracks">No Tracks found</string>
 </strings>

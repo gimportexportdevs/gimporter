@@ -4,21 +4,19 @@ using Toybox.Communications as Comm;
 
 class gimporterApp extends App.AppBase {
     var tracks;
-    var trackindex;
-    var showlist;
+    var acceptkey;
     var status;
 
     function initialize() {
         AppBase.initialize();
-	tracks = null;
-	trackindex = 0;
-	showlist = false;
-	status = "";
+        tracks = null;
+        acceptkey = true;
+        status = "";
     }
 
     // onStart() is called on application start up
     function onStart(state) {
-	loadTrackList();
+        loadTrackList();
     }
 
     // onStop() is called when your application is exiting
@@ -30,163 +28,121 @@ class gimporterApp extends App.AppBase {
         return [ new gimporterView(), new gimporterDelegate() ];
     }
 
-    function loadTrackList() {
-	//System.println("onShow");
-	status = "Getting Tracklist";
-	showlist = false;
-	Ui.requestUpdate();
-
-	Comm.makeWebRequest("http://localhost:22222/dir.json", null,
-			    {
-				:method => Comm.HTTP_REQUEST_METHOD_GET,
-				    :headers => {
-				    "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
-				},
-				    :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
-					 }, method(:onReceiveTracks) );
-    }
-
-    function onReceiveTracks(responseCode, data) {
-	status = "";
-
-	if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
-	    System.println("Bluetooth disconnected");
-	    status = "Bluetooth disconnected";
-	    Ui.requestUpdate();
-	    return;
-	}
-
-	System.println("onReceive : ");
-	//System.println(data);
-	if (responseCode != 200) {
-	    System.println("data == null" + responseCode.toString());
-	    status = "Connection failed";
-	    Ui.requestUpdate();
-	    return;
-	}
-	tracks = data["tracks"];
-
-	if (tracks == null) {
-	    System.println("tracks == null");
-	    status = "No tracks";
-	    Ui.requestUpdate();
-	    return;
-	}
-
-	//System.println(tracks);
-	if (tracks instanceof Toybox.Lang.Array) {
-	    System.println("tracks == Array");
-	} else {
-	    System.println("tracks != Array");
-	    status = "No tracks";
-	    tracks = null;
-	    Ui.requestUpdate();
-	    return;
-	}
-
-	showlist = true;
-	trackindex = 0;
-	Ui.requestUpdate();
-    }
-
-    function previousTrack() {
-	if (!showlist || (tracks == null)) {
-	    return;
-	}
-
-	trackindex = (trackindex - 1 + tracks.size()) % tracks.size();
-	status = "";
-	Ui.requestUpdate();
-
-    }
-
-    function nextTrack() {
-	if (!showlist || (tracks == null)) {
-	    return;
-	}
-	trackindex = (trackindex + 1) % tracks.size();
-	status = "";
-	Ui.requestUpdate();
-
-    }
-
-    function getTrackSize() {
-	if (!(tracks instanceof Toybox.Lang.Array)) {
-	    return 0;
-	}
-	return tracks.size();
-    }
-
-    function getCurrentTrackTitle() {
-	return tracks[trackindex]["title"];
-    }
-
-    function showList() {
-	return showlist;
+    function acceptKey() {
+        return acceptkey;
     }
 
     function getStatus() {
-	return status;
+        return status;
     }
 
-    function loadTrack() {
-	if (!showlist || (tracks == null)) {
-	    return;
-	}
+    function getTracks() {
+            return tracks;
+    }
 
-	System.println("loadTrack");
+    function loadTrackList() {
+        status = Ui.loadResource(Rez.Strings.GettingTracklist);
+        acceptkey = false;
 
-	var trackurl = tracks[trackindex]["url"];
+        Comm.makeWebRequest("http://localhost:22222/dir.json", null,
+                            {
+                                                                :method => Comm.HTTP_REQUEST_METHOD_GET,
+                                                                :headers => {
+                                                                        "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
+                                                                },
+                                    :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
+                             }, method(:onReceiveTracks)
+                                );
+        Ui.requestUpdate();
 
-	status = "Downloading";
-	Ui.requestUpdate();
-	showlist = false;
-	Comm.makeWebRequest(trackurl, null,
-			    {
-				:method => Comm.HTTP_REQUEST_METHOD_GET,
-				    :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT
-				    }, method(:onReceiveTrack) );
+    }
+
+    function onReceiveTracks(responseCode, data) {
+        status = "";
+        acceptkey = true;
+
+        if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
+            System.println("Bluetooth disconnected");
+            status = Ui.loadResource(Rez.Strings.BluetoothDisconnected);
+            Ui.requestUpdate();
+            return;
+        }
+
+        if (responseCode != 200) {
+            System.println("data == null" + responseCode.toString());
+            status = Ui.loadResource(Rez.Strings.ConnectionFailed);
+            Ui.requestUpdate();
+            return;
+        }
+
+        if (!(data instanceof Toybox.Lang.Dictionary)) {
+            System.println("data is not Dict");
+            status = Ui.loadResource(Rez.Strings.ConnectionFailed);
+            Ui.requestUpdate();
+            return;
+        }
+
+        if (! data.hasKey("tracks")) {
+            System.println("data has no track key");
+            status = Ui.loadResource(Rez.Strings.ConnectionFailed);
+            Ui.requestUpdate();
+            return;
+        }
+
+        tracks = data["tracks"];
+
+        if (tracks == null) {
+            System.println("tracks == null");
+            status = Ui.loadResource(Rez.Strings.NoTracks);
+            Ui.requestUpdate();
+            return;
+        }
+
+        if (!(tracks instanceof Toybox.Lang.Array)) {
+            System.println("tracks != Array");
+            status = Ui.loadResource(Rez.Strings.NoTracks);
+            tracks = null;
+            Ui.requestUpdate();
+            return;
+        }
+
+        Ui.pushView(new TrackChooser(), new TrackChooserDelegate(), Ui.SLIDE_IMMEDIATE);
+
+    }
+
+    function loadTrack(track) {
+        System.println("loadTrack: " + track.toString());
+
+                // TODO: check hasKey
+        var trackurl = track[0]["url"];
+
+        status = Ui.loadResource(Rez.Strings.Downloading);
+        acceptkey = false;
+        Comm.makeWebRequest(trackurl, null, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
+        Ui.pushView(new gimporterView(), new gimporterPost(), Ui.SLIDE_IMMEDIATE);
+        Ui.requestUpdate();
     }
 
     function onReceiveTrack(responseCode, data) {
-	System.println("onReceiveTrack");
-	if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
-	    System.println("Bluetooth disconnected");
-	    status = "Bluetooth disconnected";
-	    Ui.requestUpdate();
-	    return;
-	}
+        acceptkey = true;
+        System.println("onReceiveTrack");
 
-	System.println("Code: " + responseCode);
-
-	if (responseCode == 200) {
-	    if (data == null) {
-		System.println("data == null");
-		status = "Download failed";
-	    } else {
-		// TODO: What the heck is in data ???
-
-		System.println(data);
-		//System.println(data["args"]);
-		if (data instanceof Toybox.Lang.Array) {
-		    for( var i = 0; i < data.size(); i++ ) {
-			System.println("data[" + i.toString() + "] = " + data[i].toString());
-		    }
-		} else if (data instanceof Toybox.Lang.Dictionary) {
-		    keys = data.keys();
-
-		    for( var i = 0; i < keys.size(); i++ ) {
-			System.println("data['" + keys[i].toString() + "']");
-		    }
-		    //} else if (data instanceof Toybox.Lang.String) {
-		}
-		status = "Download finished";
-	    }
-	} else {
-	    status = "Download failed";
-	}
-	showlist = true;
-	Ui.requestUpdate();
-	return;
+        if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
+            System.println("Bluetooth disconnected");
+            status = Ui.loadResource(Rez.Strings.BluetoothDisconnected);
+        }
+        else if (responseCode != 200) {
+            System.println("Code: " + responseCode);
+            status = Ui.loadResource(Rez.Strings.DownloadFailed);
+        }
+        else if (data == null) {
+            System.println("data == null");
+            status = Ui.loadResource(Rez.Strings.DownloadFailed);
+        }
+        else {
+            status = Ui.loadResource(Rez.Strings.DownloadComplete);
+        }
+        Ui.requestUpdate();
+        return;
     }
 }
