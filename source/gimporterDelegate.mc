@@ -1,47 +1,51 @@
 using Toybox.WatchUi as Ui;
+using Toybox.Application as App;
 
 class gimporterDelegate extends Ui.BehaviorDelegate {
-        var view;
+    var app;
 
-        function initialize(v) {
-                BehaviorDelegate.initialize();
-                view = v;
-        }
+    function initialize() {
+	BehaviorDelegate.initialize();
+	app = App.getApp();
+    }
 
-        function onMenu() {
-                Ui.pushView(new Rez.Menus.MainMenu(), new importerMenuDelegate(), Ui.SLIDE_UP);
-                return true;
-        }
+    function onKey(key) {
+	var k = key.getKey();
 
-        function onKey(key) {
-                var k = key.getKey();
-                if (k == Ui.KEY_ENTER || k == Ui.KEY_START || k == Ui.KEY_RIGHT) {
-                        if (view.tracks == null) {
-                                view.getTracks();
-                        } else {
-                                view.loadTrack();
-                        }
-                        return true;
-                }
-                return BehaviorDelegate.onKey(key);
-        }
+	if (k == Ui.KEY_ENTER || k == Ui.KEY_START || k == Ui.KEY_RIGHT) {
+	    if (app.getTrackSize() > 0) {
+		app.loadTrack();
+	    } else {
+		app.loadTrackList();
+	    }
+	    return true;
+	} else if (k == Ui.KEY_UP) {
+	    app.previousTrack();
+	    return true;
+	} else if (k == Ui.KEY_DOWN) {
+	    app.nextTrack();
+	    return true;
+	}
+
+	return BehaviorDelegate.onKey(key);
+    }
 
 
-        function onPreviousPage() {
-                view.previousTrack();
-                return true;
-        }
+    function onPreviousPage() {
+	app.previousTrack();
+	return true;
+    }
 
-        function onNextPage() {
-                view.nextTrack();
-                return true;
-        }
+    function onNextPage() {
+	app.nextTrack();
+	return true;
+    }
 
-        function onPreviousMode() {
-                return onPreviousPage();
-        }
+    function onPreviousMode() {
+	return onPreviousPage();
+    }
 
-        function onNextMode() {
-                return onNextPage();
-        }
+    function onNextMode() {
+	return onNextPage();
+    }
 }
