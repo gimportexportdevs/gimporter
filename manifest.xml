@@ -5,7 +5,9 @@
             <iq:product id="fenix5"/>
             <iq:product id="fenix5x"/>
             <iq:product id="fenix5s"/>
-            <iq:product id="edge_1000"/>
+            <iq:product id="fr935"/>
+            <iq:product id="fr735xt"/>
+            <iq:product id="fenixchronos"/>
         </iq:products>
 
         <iq:permissions>
