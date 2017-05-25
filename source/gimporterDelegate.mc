@@ -16,11 +16,11 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
         function onKey(key) {
                 var k = key.getKey();
                 if (k == Ui.KEY_ENTER || k == Ui.KEY_START || k == Ui.KEY_RIGHT) {
-			if (view.tracks == null) {
-				view.getTracks();
-			} else {
-				view.loadTrack();
-			}
+                        if (view.tracks == null) {
+                                view.getTracks();
+                        } else {
+                                view.loadTrack();
+                        }
                         return true;
                 }
                 return BehaviorDelegate.onKey(key);
@@ -38,10 +38,10 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
         }
 
         function onPreviousMode() {
-		return onPreviousPage();
+                return onPreviousPage();
         }
 
         function onNextMode() {
-		return onNextPage();
+                return onNextPage();
         }
 }
