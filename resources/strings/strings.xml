@@ -1,6 +1,6 @@
 <strings>
     <string id="AppName">gimporter</string>
-    <string id="AppVersion">V1</string>
+    <string id="AppVersion">V2</string>
     <string id="PressStart">Press Start</string>
     <string id="GettingTracklist">Getting Tracklist</string>
     <string id="BluetoothDisconnected">Bluetooth disconnected</string>
@@ -10,4 +10,5 @@
     <string id="DownloadComplete">Download complete</string>
     <string id="Downloading">Downloading</string>
     <string id="NoTracks">No Tracks found</string>
+    <string id="MORE">[...]</string>
 </strings>

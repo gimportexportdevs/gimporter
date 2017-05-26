@@ -41,7 +41,7 @@ class gimporterApp extends App.AppBase {
     }
 
     function loadTrackList() {
-        status = Ui.loadResource(Rez.Strings.GettingTracklist);
+        status = Rez.Strings.GettingTracklist;
         acceptkey = false;
 
         Comm.makeWebRequest("http://localhost:22222/dir.json", null,
@@ -63,28 +63,28 @@ class gimporterApp extends App.AppBase {
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
             System.println("Bluetooth disconnected");
-            status = Ui.loadResource(Rez.Strings.BluetoothDisconnected);
+            status = Rez.Strings.BluetoothDisconnected;
             Ui.requestUpdate();
             return;
         }
 
         if (responseCode != 200) {
             System.println("data == null" + responseCode.toString());
-            status = Ui.loadResource(Rez.Strings.ConnectionFailed);
+            status = Rez.Strings.ConnectionFailed;
             Ui.requestUpdate();
             return;
         }
 
         if (!(data instanceof Toybox.Lang.Dictionary)) {
             System.println("data is not Dict");
-            status = Ui.loadResource(Rez.Strings.ConnectionFailed);
+            status = Rez.Strings.ConnectionFailed;
             Ui.requestUpdate();
             return;
         }
 
         if (! data.hasKey("tracks")) {
             System.println("data has no track key");
-            status = Ui.loadResource(Rez.Strings.ConnectionFailed);
+            status = Rez.Strings.ConnectionFailed;
             Ui.requestUpdate();
             return;
         }
@@ -93,30 +93,30 @@ class gimporterApp extends App.AppBase {
 
         if (tracks == null) {
             System.println("tracks == null");
-            status = Ui.loadResource(Rez.Strings.NoTracks);
+            status = Rez.Strings.NoTracks;
             Ui.requestUpdate();
             return;
         }
 
         if (!(tracks instanceof Toybox.Lang.Array)) {
             System.println("tracks != Array");
-            status = Ui.loadResource(Rez.Strings.NoTracks);
+            status = Rez.Strings.NoTracks;
             tracks = null;
             Ui.requestUpdate();
             return;
         }
 
-        Ui.pushView(new TrackChooser(), new TrackChooserDelegate(), Ui.SLIDE_IMMEDIATE);
+        Ui.pushView(new TrackChooser(0), new TrackChooserDelegate(0), Ui.SLIDE_IMMEDIATE);
 
     }
 
-    function loadTrack(track) {
-        System.println("loadTrack: " + track.toString());
+    function loadTrackNum(index) {
+        System.println("loadTrack: " + tracks[index].toString());
 
                 // TODO: check hasKey
-        var trackurl = track[0]["url"];
+        var trackurl = tracks[index]["url"];
 
-        status = Ui.loadResource(Rez.Strings.Downloading);
+        status = Rez.Strings.Downloading;
         acceptkey = false;
         Comm.makeWebRequest(trackurl, null, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
         Ui.pushView(new gimporterView(), new gimporterPost(), Ui.SLIDE_IMMEDIATE);
@@ -129,18 +129,18 @@ class gimporterApp extends App.AppBase {
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
             System.println("Bluetooth disconnected");
-            status = Ui.loadResource(Rez.Strings.BluetoothDisconnected);
+            status = Rez.Strings.BluetoothDisconnected;
         }
         else if (responseCode != 200) {
             System.println("Code: " + responseCode);
-            status = Ui.loadResource(Rez.Strings.DownloadFailed);
+            status = Rez.Strings.DownloadFailed;
         }
         else if (data == null) {
             System.println("data == null");
-            status = Ui.loadResource(Rez.Strings.DownloadFailed);
+            status = Rez.Strings.DownloadFailed;
         }
         else {
-            status = Ui.loadResource(Rez.Strings.DownloadComplete);
+            status = Rez.Strings.DownloadComplete;
         }
         Ui.requestUpdate();
         return;
