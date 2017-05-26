@@ -4,6 +4,7 @@ using Toybox.Communications as Comm;
 
 class gimporterApp extends App.AppBase {
     var tracks;
+    var trackToStart;
     var acceptkey;
     var status;
 
@@ -115,6 +116,7 @@ class gimporterApp extends App.AppBase {
 
                 // TODO: check hasKey
         var trackurl = tracks[index]["url"];
+	trackToStart = tracks[index]["title"];
 
         status = Rez.Strings.Downloading;
         acceptkey = false;
@@ -140,7 +142,14 @@ class gimporterApp extends App.AppBase {
             status = Rez.Strings.DownloadFailed;
         }
         else {
+            System.println(data.toString());
             status = Rez.Strings.DownloadComplete;
+	    if (trackToStart.length() > 15) {
+		trackToStart = trackToStart.substring(0, 15);
+	    }
+	    Ui.popView(Ui.SLIDE_IMMEDIATE);
+
+	    Ui.pushView(new TrackStart(), new TrackStartDelegate(trackToStart), Ui.SLIDE_IMMEDIATE);
         }
         Ui.requestUpdate();
         return;

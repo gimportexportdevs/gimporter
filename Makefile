@@ -8,7 +8,7 @@ appName = $(shell grep entry manifest.xml | sed 's/.*entry="\([^"]*\).*/\1/' | s
 FLAGS = -s 2.2.0 -w
 MONKEYC = java -Dfile.encoding=UTF-8 -Dapple.awt.UIElement=true -jar $(SDK_HOME)/bin/monkeybrains.jar
 
-.PHONY: build
+.PHONY: build deploy
 
 all: build
 
@@ -38,8 +38,10 @@ run: build
 	sleep 3 &&\
 	$(SDK_HOME)/bin/monkeydo bin/$(appName).prg $(DEVICE)
 
-deploy: build
-	@cp bin/$(appName).prg $(DEPLOY)
+$(DEPLOY)/$(appName).prg: bin/$(appName).prg
+	@cp bin/$(appName).prg $(DEPLOY)/$(appName).prg
+
+deploy: build $(DEPLOY)/$(appName).prg
 
 package:
 	@$(MONKEYC) $(FLAGS) --warn -e --output bin/$(appName).iq -m manifest.xml \
