@@ -8,8 +8,8 @@ class TrackStart extends Ui.Menu {
     function initialize() {
 	Menu.initialize();
 	Menu.setTitle(Rez.Strings.trackStartTitle);
-	Menu.addItem(Rez.Strings.YES, :YES);
 	Menu.addItem(Rez.Strings.NO, :NO);
+	Menu.addItem(Rez.Strings.YES, :YES);
     }
 }
 

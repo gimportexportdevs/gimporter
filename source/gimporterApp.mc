@@ -1,6 +1,7 @@
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
+using Toybox.PersistedContent as PC;
 
 class gimporterApp extends App.AppBase {
     var tracks;
@@ -147,9 +148,20 @@ class gimporterApp extends App.AppBase {
 	    if (trackToStart.length() > 15) {
 		trackToStart = trackToStart.substring(0, 15);
 	    }
-	    Ui.popView(Ui.SLIDE_IMMEDIATE);
 
-	    Ui.pushView(new TrackStart(), new TrackStartDelegate(trackToStart), Ui.SLIDE_IMMEDIATE);
+	    var cit = PC.getCourses();
+	    var course;
+	    while (true) {
+		course = cit.next();
+		if (course == null) {
+		    break;
+		}
+
+		if (course.getName().equals(trackToStart)) {
+		    Ui.popView(Ui.SLIDE_IMMEDIATE);
+		    Ui.pushView(new TrackStart(), new TrackStartDelegate(trackToStart), Ui.SLIDE_IMMEDIATE);
+		}
+	    }
         }
         Ui.requestUpdate();
         return;
