@@ -8,7 +8,7 @@ appName = $(shell grep entry manifest.xml | sed 's/.*entry="\([^"]*\).*/\1/' | s
 FLAGS = -s 2.2.0 -w
 MONKEYC = java -Dfile.encoding=UTF-8 -Dapple.awt.UIElement=true -jar $(SDK_HOME)/bin/monkeybrains.jar
 
-.PHONY: build deploy
+.PHONY: build deploy buildall
 
 all: build
 
