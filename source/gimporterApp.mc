@@ -34,6 +34,10 @@ class gimporterApp extends App.AppBase {
         return acceptkey;
     }
 
+    function setAcceptKey(v) {
+        acceptkey = v;
+    }
+
     function getStatus() {
         return status;
     }
@@ -121,9 +125,9 @@ class gimporterApp extends App.AppBase {
 
         status = Rez.Strings.Downloading;
         acceptkey = false;
-        Comm.makeWebRequest(trackurl, null, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
         Ui.pushView(new gimporterView(), new gimporterPost(), Ui.SLIDE_IMMEDIATE);
         Ui.requestUpdate();
+        Comm.makeWebRequest(trackurl, null, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
     }
 
     function onReceiveTrack(responseCode, data) {
@@ -159,7 +163,8 @@ class gimporterApp extends App.AppBase {
 
 		if (course.getName().equals(trackToStart)) {
 		    Ui.popView(Ui.SLIDE_IMMEDIATE);
-		    Ui.pushView(new TrackStart(), new TrackStartDelegate(trackToStart), Ui.SLIDE_IMMEDIATE);
+		    Ui.pushView(new IntentStart(), new IntentStartDelegate(course.toIntent()), Ui.SLIDE_IMMEDIATE);
+		    break;
 		}
 	    }
         }

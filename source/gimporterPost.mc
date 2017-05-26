@@ -9,13 +9,9 @@ class gimporterPost extends Ui.BehaviorDelegate {
         app = App.getApp();
     }
 
-    function onCancel() {
-        Ui.popView(Ui.SLIDE_IMMEDIATE);
-    }
-
     function onKey(key) {
         if (!app.acceptKey()) {
-                        return true;
+	    return false;
         }
         Ui.popView(Ui.SLIDE_IMMEDIATE);
         return true;
