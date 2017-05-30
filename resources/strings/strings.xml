@@ -7,6 +7,7 @@
     <string id="ConnectionFailed">Connection failed</string>
     <string id="trackChooserTitle">Select Track</string>
     <string id="DownloadFailed">Download failed</string>
+    <string id="DownloadNotSupported">Type unsupported</string>
     <string id="DownloadComplete">Download complete</string>
     <string id="Downloading">Downloading</string>
     <string id="NoTracks">No Tracks found</string>

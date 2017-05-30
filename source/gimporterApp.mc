@@ -8,12 +8,14 @@ class gimporterApp extends App.AppBase {
     var trackToStart;
     var acceptkey;
     var status;
+    var mGPXorFIT;
 
     function initialize() {
         AppBase.initialize();
         tracks = null;
         acceptkey = true;
         status = "";
+        mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
     }
 
     // onStart() is called on application start up
@@ -45,16 +47,21 @@ class gimporterApp extends App.AppBase {
     function loadTrackList() {
         status = Rez.Strings.GettingTracklist;
         acceptkey = false;
+        try {
+            Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT },
+                                {
+                                                                    :method => Comm.HTTP_REQUEST_METHOD_GET,
+                                                                    :headers => {
+                                                                            "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
+                                                                    },
+                                        :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
+                                 }, method(:onReceiveTracks)
+                                    );
+        } catch( ex ) {
+            acceptkey = true;
+            status = ex.getErrorMessage();
+        }
 
-        Comm.makeWebRequest("http://localhost:22222/dir.json", null,
-                            {
-                                                                :method => Comm.HTTP_REQUEST_METHOD_GET,
-                                                                :headers => {
-                                                                        "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
-                                                                },
-                                    :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
-                             }, method(:onReceiveTracks)
-                                );
         Ui.requestUpdate();
 
     }
@@ -117,11 +124,24 @@ class gimporterApp extends App.AppBase {
 
                 // TODO: check hasKey
         var trackurl = tracks[index]["url"];
-	trackToStart = tracks[index]["title"];
+        trackToStart = tracks[index]["title"];
 
         status = Rez.Strings.Downloading;
         acceptkey = false;
-        Comm.makeWebRequest(trackurl, null, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
+        System.println("GPXorFIT: " + mGPXorFIT);
+
+        try {
+            if (mGPXorFIT.equals("FIT")) {
+                System.println("Downloading FIT");
+                Comm.makeWebRequest(trackurl, { "type" => "FIT" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
+            } else {
+                System.println("Downloading GPX");
+                Comm.makeWebRequest(trackurl, { "type" => "GPX" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_GPX}, method(:onReceiveTrack) );
+            }
+        } catch( ex ) {
+            acceptkey = true;
+            status = Rez.Strings.DownloadNotSupported;
+        }
         Ui.pushView(new gimporterView(), new gimporterPost(), Ui.SLIDE_IMMEDIATE);
         Ui.requestUpdate();
     }
@@ -144,24 +164,33 @@ class gimporterApp extends App.AppBase {
         }
         else {
             System.println(data.toString());
+
             status = Rez.Strings.DownloadComplete;
-	    if (trackToStart.length() > 15) {
-		trackToStart = trackToStart.substring(0, 15);
-	    }
+            if (trackToStart.length() > 4) {
+                var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
+                if (postfix.equals(".fit") || postfix.equals(".gpx")) {
+                    trackToStart = trackToStart.substring(0, trackToStart.length()-4);
+                }
+            }
+            if (trackToStart.length() > 15) {
+                trackToStart = trackToStart.substring(0, 15);
+            }
 
-	    var cit = PC.getCourses();
-	    var course;
-	    while (true) {
-		course = cit.next();
-		if (course == null) {
-		    break;
-		}
-
-		if (course.getName().equals(trackToStart)) {
-		    Ui.popView(Ui.SLIDE_IMMEDIATE);
-		    Ui.pushView(new TrackStart(), new TrackStartDelegate(trackToStart), Ui.SLIDE_IMMEDIATE);
-		}
-	    }
+            var cit = PC.getCourses();
+            var course;
+            while (true) {
+                course = cit.next();
+                if (course == null) {
+                    break;
+                }
+                var coursename = course.getName();
+                if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
+                    Ui.popView(Ui.SLIDE_IMMEDIATE);
+                    Ui.pushView(new TrackStart(), new TrackStartDelegate(coursename), Ui.SLIDE_IMMEDIATE);
+                } else {
+                    System.println(course.getName() + " != " + trackToStart);
+                }
+            }
         }
         Ui.requestUpdate();
         return;

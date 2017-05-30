@@ -6,10 +6,10 @@ using Toybox.System as System;
 
 class TrackStart extends Ui.Menu {
     function initialize() {
-	Menu.initialize();
-	Menu.setTitle(Rez.Strings.trackStartTitle);
-	Menu.addItem(Rez.Strings.NO, :NO);
-	Menu.addItem(Rez.Strings.YES, :YES);
+    Menu.initialize();
+    Menu.setTitle(Rez.Strings.trackStartTitle);
+    Menu.addItem(Rez.Strings.NO, :NO);
+    Menu.addItem(Rez.Strings.YES, :YES);
     }
 }
 
@@ -20,27 +20,28 @@ class TrackStartDelegate extends Ui.MenuInputDelegate {
     function initialize(track) {
         MenuInputDelegate.initialize();
         app = App.getApp();
-	trackToStart = track;
+        trackToStart = track;
     }
 
     function onMenuItem(item) {
-	if (!item.equals(:YES)) {
-	    Ui.popView(Ui.SLIDE_IMMEDIATE);
-	    return;
-	}
-	var cit = PC.getCourses();
-	var course;
-	while (true) {
-	    course = cit.next();
-	    if (course == null) {
-		break;
-	    }
+        if (!item.equals(:YES)) {
+            return true;
+        }
 
-	    if (course.getName().equals(trackToStart)) {
-		System.exitTo(course.toIntent());
-		return;
-	    }
-	}
-	Ui.popView(Ui.SLIDE_IMMEDIATE);
+        var cit = PC.getCourses();
+        var course;
+
+        while (true) {
+            course = cit.next();
+            if (course == null) {
+                break;
+            }
+
+            if (course.getName().equals(trackToStart)) {
+                System.exitTo(course.toIntent());
+                return false;
+            }
+        }
+        return true;
     }
 }
