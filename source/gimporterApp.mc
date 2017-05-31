@@ -2,6 +2,8 @@ using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
 using Toybox.PersistedContent as PC;
+using Toybox.Timer as Timer;
+using Toybox.System as System;
 
 class gimporterApp extends App.AppBase {
     var tracks;
@@ -10,12 +12,14 @@ class gimporterApp extends App.AppBase {
     var status;
     var mGPXorFIT;
 
+    var bluetoothTimer;
     function initialize() {
         AppBase.initialize();
         tracks = null;
         acceptkey = true;
         status = "";
         mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
+        bluetoothTimer = new Timer.Timer();
     }
 
     // onStart() is called on application start up
@@ -45,6 +49,14 @@ class gimporterApp extends App.AppBase {
     }
 
     function loadTrackList() {
+        if (! System.getDeviceSettings().phoneConnected) {
+            bluetoothTimer.stop();
+            status = Rez.Strings.WaitingForBluetooth;
+            bluetoothTimer.start(method(:loadTrackList), 1000, false);
+            Ui.requestUpdate();
+            return;
+        }
+
         status = Rez.Strings.GettingTracklist;
         acceptkey = false;
         try {
