@@ -41,7 +41,7 @@ class gimporterApp extends App.AppBase {
     }
 
     function getTracks() {
-            return tracks;
+        return tracks;
     }
 
     function loadTrackList() {
@@ -50,13 +50,13 @@ class gimporterApp extends App.AppBase {
         try {
             Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT },
                                 {
-                                                                    :method => Comm.HTTP_REQUEST_METHOD_GET,
-                                                                    :headers => {
-                                                                            "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
-                                                                    },
+                                    :method => Comm.HTTP_REQUEST_METHOD_GET,
+                                        :headers => {
+                                        "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
+                                    },
                                         :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
-                                 }, method(:onReceiveTracks)
-                                    );
+                                             }, method(:onReceiveTracks)
+                );
         } catch( ex ) {
             acceptkey = true;
             status = ex.getErrorMessage();
@@ -122,7 +122,7 @@ class gimporterApp extends App.AppBase {
     function loadTrackNum(index) {
         System.println("loadTrack: " + tracks[index].toString());
 
-                // TODO: check hasKey
+        // TODO: check hasKey
         var trackurl = tracks[index]["url"];
         trackToStart = tracks[index]["title"];
 
