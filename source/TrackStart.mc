@@ -17,7 +17,12 @@ class TrackStartDelegate extends Ui.ConfirmationDelegate {
 
     function onResponse(response) {
         if (response == Ui.CONFIRM_YES) {
+            System.println("Yes: Starting Intent");
+            //Ui.popView(Ui.SLIDE_IMMEDIATE);
             System.exitTo(mIntent);
+        } else {
+            System.println("No");
+            Ui.popView(Ui.SLIDE_IMMEDIATE);
         }
     }
 }
