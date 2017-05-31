@@ -1,47 +1,23 @@
-using Toybox.Graphics as Gfx;
 using Toybox.WatchUi as Ui;
-using Toybox.Application as App;
-using Toybox.PersistedContent as PC;
 using Toybox.System as System;
 
-class TrackStart extends Ui.Menu {
+class TrackStart extends Ui.Confirmation {
     function initialize() {
-    Menu.initialize();
-    Menu.setTitle(Rez.Strings.trackStartTitle);
-    Menu.addItem(Rez.Strings.NO, :NO);
-    Menu.addItem(Rez.Strings.YES, :YES);
+        Confirmation.initialize(Ui.loadResource(Rez.Strings.trackStartTitle));
     }
 }
 
-class TrackStartDelegate extends Ui.MenuInputDelegate {
-    var app;
-    var trackToStart;
+class TrackStartDelegate extends Ui.ConfirmationDelegate {
+    var mIntent;
 
-    function initialize(track) {
-        MenuInputDelegate.initialize();
-        app = App.getApp();
-        trackToStart = track;
+    function initialize(intent) {
+        ConfirmationDelegate.initialize();
+        mIntent = intent;
     }
 
-    function onMenuItem(item) {
-        if (!item.equals(:YES)) {
-            return true;
+    function onResponse(response) {
+        if (response == Ui.CONFIRM_YES) {
+            System.exitTo(mIntent);
         }
-
-        var cit = PC.getCourses();
-        var course;
-
-        while (true) {
-            course = cit.next();
-            if (course == null) {
-                break;
-            }
-
-            if (course.getName().equals(trackToStart)) {
-                System.exitTo(course.toIntent());
-                return false;
-            }
-        }
-        return true;
     }
 }
