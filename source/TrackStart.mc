@@ -22,7 +22,7 @@ class TrackStartDelegate extends Ui.ConfirmationDelegate {
             System.exitTo(mIntent);
         } else {
             System.println("No");
-            Ui.popView(Ui.SLIDE_IMMEDIATE);
+            //Ui.popView(Ui.SLIDE_IMMEDIATE);
         }
     }
 }
