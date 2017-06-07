@@ -24,7 +24,8 @@ class gimporterApp extends App.AppBase {
 
     // onStart() is called on application start up
     function onStart(state) {
-        loadTrackList();
+        //loadTrackList();
+        status = Rez.Strings.PressStart;
     }
 
     // onStop() is called when your application is exiting
