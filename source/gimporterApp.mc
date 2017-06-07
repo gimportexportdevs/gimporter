@@ -202,7 +202,8 @@ class gimporterApp extends App.AppBase {
                 }
                 var coursename = course.getName();
                 if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
-                    Ui.popView(Ui.SLIDE_IMMEDIATE);
+                    // don't pop. Edge does not like it
+                    // Ui.popView(Ui.SLIDE_IMMEDIATE);
                     Ui.pushView(new TrackStart(), new TrackStartDelegate(course.toIntent()), Ui.SLIDE_IMMEDIATE);
                 } else {
                     System.println(course.getName() + " != " + trackToStart);
