@@ -16,10 +16,16 @@ clean:
 	@rm -fr bin
 	@find . -name '*~' -print0 | xargs -0 rm -f
 
-build: bin/$(APPNAME)-$(DEVICE).prg
+build: bin/$(APPNAME)-$(DEVICE).prg bin/$(APPNAME)-widget-$(DEVICE).prg
 
-bin/$(APPNAME)-$(DEVICE).prg: $(SOURCES) $(RESFILES)
+bin/$(APPNAME)-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest.xml
 	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE).prg -m manifest.xml \
+	-z $(RESOURCE_FLAGS) \
+	-y $(PRIVATE_KEY) \
+	-d $(DEVICE) $(SOURCES)
+
+bin/$(APPNAME)-widget-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-widget.xml
+	$(MONKEYC) --warn --output bin/$(APPNAME)-widget-$(DEVICE).prg -m manifest-widget.xml \
 	-z $(RESOURCE_FLAGS) \
 	-y $(PRIVATE_KEY) \
 	-d $(DEVICE) $(SOURCES)
@@ -53,7 +59,10 @@ test: sim bin/$(APPNAME)-$(DEVICE)-test.prg
 $(DEPLOY)/$(APPNAME).prg: bin/$(APPNAME)-$(DEVICE).prg
 	@cp bin/$(APPNAME)-$(DEVICE).prg $(DEPLOY)/$(APPNAME).prg
 
-deploy: build $(DEPLOY)/$(APPNAME).prg
+$(DEPLOY)/$(APPNAME)-widget.prg: bin/$(APPNAME)-widget-$(DEVICE).prg
+	@cp bin/$(APPNAME)-widget-$(DEVICE).prg $(DEPLOY)/$(APPNAME)-widget.prg
+
+deploy: build $(DEPLOY)/$(APPNAME).prg $(DEPLOY)/$(APPNAME)-widget.prg
 
 package:
 	@$(MONKEYC) --warn -e --output bin/$(APPNAME).iq -m manifest.xml \
@@ -62,7 +71,7 @@ package:
 	$(SOURCES) -r
 
 manifest-widget.xml: manifest.xml
-	sed -e 's/watch-app/widget/g' < manifest.xml > manifest-widget.xml
+	sed -e 's/watch-app/widget/g;s/9B0A09CFC89E4F7CA5E4AB21400EE424/B5FD4C5FE0F848E88A03E37E86971CEB/g' < manifest.xml > manifest-widget.xml
 
 package-widget: manifest-widget.xml
 	@$(MONKEYC) --warn -e --output bin/$(APPNAME).iq -m manifest-widget.xml \
