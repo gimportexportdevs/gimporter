@@ -139,6 +139,10 @@ class gimporterApp extends App.AppBase {
         var trackurl = tracks[index]["url"];
         trackToStart = tracks[index]["title"];
 
+        if ((trackurl.length() < 7) || (!trackurl.substring(0, 7).equals("http://"))) {
+            trackurl = "http://localhost:22222/" + trackurl;
+        }
+
         status = Rez.Strings.Downloading;
         acceptkey = false;
         System.println("GPXorFIT: " + mGPXorFIT);
