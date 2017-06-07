@@ -18,8 +18,17 @@ class gimporterApp extends App.AppBase {
         tracks = null;
         acceptkey = true;
         status = "";
-        mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
+        mGPXorFIT = getPropertyDef("GPXorFIT", "FIT");
         bluetoothTimer = new Timer.Timer();
+    }
+
+    function getPropertyDef(key, def) {
+        var val = self.getProperty(key);
+        if (val == null) {
+            return def;
+        } else {
+            return val;
+        }
     }
 
     // onStart() is called on application start up
