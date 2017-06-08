@@ -11,8 +11,8 @@ class gimporterApp extends App.AppBase {
     var acceptkey;
     var status;
     var mGPXorFIT;
-
     var bluetoothTimer;
+
     function initialize() {
         AppBase.initialize();
         tracks = null;
@@ -156,6 +156,9 @@ class gimporterApp extends App.AppBase {
         acceptkey = false;
         System.println("GPXorFIT: " + mGPXorFIT);
 
+        Ui.pushView(new gimporterView(), new gimporterPost(null), Ui.SLIDE_IMMEDIATE);
+        Ui.requestUpdate();
+
         try {
             if (mGPXorFIT.equals("FIT")) {
                 System.println("Downloading FIT");
@@ -168,8 +171,6 @@ class gimporterApp extends App.AppBase {
             acceptkey = true;
             status = Rez.Strings.DownloadNotSupported;
         }
-        Ui.pushView(new gimporterView(), new gimporterPost(), Ui.SLIDE_IMMEDIATE);
-        Ui.requestUpdate();
     }
 
     function onReceiveTrack(responseCode, data) {
@@ -179,19 +180,27 @@ class gimporterApp extends App.AppBase {
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
             System.println("Bluetooth disconnected");
             status = Rez.Strings.BluetoothDisconnected;
+            Ui.requestUpdate();
+            return;
         }
         else if (responseCode != 200) {
             System.println("Code: " + responseCode);
             status = Rez.Strings.DownloadFailed;
+            Ui.requestUpdate();
+            return;
         }
         else if (data == null) {
             System.println("data == null");
             status = Rez.Strings.DownloadFailed;
+            Ui.requestUpdate();
+            return;
         }
         else {
             System.println(data.toString());
 
             status = Rez.Strings.DownloadComplete;
+            Ui.requestUpdate();
+
             if (trackToStart.length() > 4) {
                 var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
                 if (postfix.equals(".fit") || postfix.equals(".gpx")) {
@@ -211,15 +220,20 @@ class gimporterApp extends App.AppBase {
                 }
                 var coursename = course.getName();
                 if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
-                    // don't pop. Edge does not like it
-                    // Ui.popView(Ui.SLIDE_IMMEDIATE);
-                    Ui.pushView(new TrackStart(), new TrackStartDelegate(course.toIntent()), Ui.SLIDE_IMMEDIATE);
+                    status = Rez.Strings.trackStartTitle;
+                    // FIXME: Garmin
+                    // Without switchToView() the widget would timeout
+                    Ui.switchToView(new gimporterView(), new gimporterPost(course), Ui.SLIDE_IMMEDIATE);
+                    System.println("Found course: " + course.getName() + " asking for start");
+                    Ui.requestUpdate();
+                    return;
                 } else {
                     System.println(course.getName() + " != " + trackToStart);
                 }
             }
+            Ui.switchToView(new gimporterView(), new gimporterPost(null), Ui.SLIDE_IMMEDIATE);
+            Ui.requestUpdate();
+            return;
         }
-        Ui.requestUpdate();
-        return;
     }
 }
