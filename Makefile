@@ -1,14 +1,14 @@
 include properties.mk
 
-SUPPORTED_DEVICES_LIST = $(shell sed -n -e 's/<iq:product id="\(.*\)"\/>/\1/p' manifest.xml)
+SUPPORTED_DEVICES_LIST = $(shell sed -n -e 's/<iq:product id="\(.*\)"\/>/\1/p' manifest-app.xml)
 SOURCES = $(shell find source -name '[^.]*.mc')
 RESOURCE_FLAGS = $(shell find resources* -name '[^.]*.xml' | tr '\n' ':' | sed 's/.$$//')
 RESFILES = $(shell find resources* -name '[^.]*.xml')
-APPNAME = $(shell grep entry manifest.xml | sed 's/.*entry="\([^"]*\).*/\1/' | sed 's/App$$//')
+APPNAME = $(shell grep entry manifest-app.xml | sed 's/.*entry="\([^"]*\).*/\1/' | sed 's/App$$//')
 SIMULATOR = $(shell [ "$$(uname)" == "Linux" ] && echo "wine32 $(SDK_HOME)/bin/simulator.exe" || echo '$(SDK_HOME)/bin/connectiq')
 MONKEYC = java -Dfile.encoding=UTF-8 -Dapple.awt.UIElement=true -jar $(SDK_HOME)/bin/monkeybrains.jar
 
-.PHONY: build deploy buildall run package clean sim package-widget
+.PHONY: build deploy buildall run package clean sim package-widget package-app
 
 all: build
 
@@ -18,8 +18,8 @@ clean:
 
 build: bin/$(APPNAME)-$(DEVICE).prg bin/$(APPNAME)-widget-$(DEVICE).prg
 
-bin/$(APPNAME)-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest.xml
-	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE).prg -m manifest.xml \
+bin/$(APPNAME)-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-app.xml
+	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE).prg -m manifest-app.xml \
 	-z $(RESOURCE_FLAGS) \
 	-y $(PRIVATE_KEY) \
 	-d $(DEVICE) $(SOURCES)
@@ -31,7 +31,7 @@ bin/$(APPNAME)-widget-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-widget.xml
 	-d $(DEVICE) $(SOURCES)
 
 bin/$(APPNAME)-$(DEVICE)-test.prg: $(SOURCES) $(RESFILES)
-	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE)-test.prg -m manifest.xml \
+	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE)-test.prg -m manifest-app.xml \
 	-z $(RESOURCE_FLAGS) \
 	-y $(PRIVATE_KEY) \
 	--unit-test \
@@ -41,7 +41,7 @@ buildall:
 	@for device in $(SUPPORTED_DEVICES_LIST); do \
 		echo "-----"; \
 		echo "Building for" $$device; \
-		$(MONKEYC) --warn --output bin/$(APPNAME)-$$device.prg -m manifest.xml \
+		$(MONKEYC) --warn --output bin/$(APPNAME)-$$device.prg -m manifest-app.xml \
 			   -z $(RESOURCE_FLAGS) \
 			   -y $(PRIVATE_KEY) \
                            -d $$device $(SOURCES); \
@@ -64,17 +64,19 @@ $(DEPLOY)/$(APPNAME)-widget.prg: bin/$(APPNAME)-widget-$(DEVICE).prg
 
 deploy: build $(DEPLOY)/$(APPNAME).prg $(DEPLOY)/$(APPNAME)-widget.prg
 
-package:
-	@$(MONKEYC) --warn -e --output bin/$(APPNAME).iq -m manifest.xml \
+manifest-widget.xml: manifest-app.xml
+	sed -e 's/watch-app/widget/g;s/9B0A09CFC89E4F7CA5E4AB21400EE424/B5FD4C5FE0F848E88A03E37E86971CEB/g' < manifest-app.xml > manifest-widget.xml
+
+package: package-app package-widget
+
+package-app:
+	@$(MONKEYC) --warn -e --output bin/$(APPNAME)-app.iq -m manifest-app.xml \
 	-z $(RESOURCE_FLAGS) \
 	-y $(PRIVATE_KEY) \
 	$(SOURCES) -r
 
-manifest-widget.xml: manifest.xml
-	sed -e 's/watch-app/widget/g;s/9B0A09CFC89E4F7CA5E4AB21400EE424/B5FD4C5FE0F848E88A03E37E86971CEB/g' < manifest.xml > manifest-widget.xml
-
 package-widget: manifest-widget.xml
-	@$(MONKEYC) --warn -e --output bin/$(APPNAME).iq -m manifest-widget.xml \
+	@$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -m manifest-widget.xml \
 	-z $(RESOURCE_FLAGS) \
 	-y $(PRIVATE_KEY) \
 	$(SOURCES) -r

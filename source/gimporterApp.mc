@@ -8,22 +8,26 @@ using Toybox.System as System;
 class gimporterApp extends App.AppBase {
     var tracks;
     var trackToStart;
-    var acceptkey;
+    var canLoadList;
     var status;
     var mGPXorFIT;
     var bluetoothTimer;
+    var mCourse;
+    var exitTimer;
 
     function initialize() {
         AppBase.initialize();
         tracks = null;
-        acceptkey = true;
+        canLoadList = true;
         status = "";
         mGPXorFIT = getPropertyDef("GPXorFIT", "FIT");
         bluetoothTimer = new Timer.Timer();
+        exitTimer = new Timer.Timer();
+        mCourse = null;
     }
 
     function getPropertyDef(key, def) {
-        var val = self.getProperty(key);
+        var val = getProperty(key);
         if (val == null) {
             return def;
         } else {
@@ -46,10 +50,6 @@ class gimporterApp extends App.AppBase {
         return [ new gimporterView(), new gimporterDelegate() ];
     }
 
-    function acceptKey() {
-        return acceptkey;
-    }
-
     function getStatus() {
         return status;
     }
@@ -68,9 +68,9 @@ class gimporterApp extends App.AppBase {
         }
 
         status = Rez.Strings.GettingTracklist;
-        acceptkey = false;
+        canLoadList = false;
         try {
-            Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT },
+            Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT, "short" => "1" },
                                 {
                                     :method => Comm.HTTP_REQUEST_METHOD_GET,
                                         :headers => {
@@ -80,7 +80,7 @@ class gimporterApp extends App.AppBase {
                                              }, method(:onReceiveTracks)
                 );
         } catch( ex ) {
-            acceptkey = true;
+            canLoadList = true;
             status = ex.getErrorMessage();
         }
 
@@ -90,7 +90,7 @@ class gimporterApp extends App.AppBase {
 
     function onReceiveTracks(responseCode, data) {
         status = "";
-        acceptkey = true;
+        canLoadList = true;
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
             System.println("Bluetooth disconnected");
@@ -153,10 +153,10 @@ class gimporterApp extends App.AppBase {
         }
 
         status = Rez.Strings.Downloading;
-        acceptkey = false;
+        canLoadList = false;
         System.println("GPXorFIT: " + mGPXorFIT);
 
-        Ui.pushView(new gimporterView(), new gimporterPost(null), Ui.SLIDE_IMMEDIATE);
+        Ui.pushView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
         Ui.requestUpdate();
 
         try {
@@ -168,13 +168,25 @@ class gimporterApp extends App.AppBase {
                 Comm.makeWebRequest(trackurl, { "type" => "GPX" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_GPX}, method(:onReceiveTrack) );
             }
         } catch( ex ) {
-            acceptkey = true;
             status = Rez.Strings.DownloadNotSupported;
         }
     }
 
+    function doExitInto() {
+        if (mCourse != null) {
+            System.exitTo(mCourse.toIntent());
+            mCourse = null;
+        }
+    }
+
+    function exitInto(course) {
+        if (course != null) {
+            mCourse = course;
+            exitTimer.start(method(:doExitInto), 200, false);
+        }
+    }
+
     function onReceiveTrack(responseCode, data) {
-        acceptkey = true;
         System.println("onReceiveTrack");
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
@@ -198,8 +210,10 @@ class gimporterApp extends App.AppBase {
         else {
             System.println(data.toString());
 
+            // FIXME: Garmin
+            // Without switchToView() the widget is gone
+            // Ui.switchToView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
             status = Rez.Strings.DownloadComplete;
-            Ui.requestUpdate();
 
             if (trackToStart.length() > 4) {
                 var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
@@ -220,20 +234,76 @@ class gimporterApp extends App.AppBase {
                 }
                 var coursename = course.getName();
                 if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
-                    status = Rez.Strings.trackStartTitle;
-                    // FIXME: Garmin
-                    // Without switchToView() the widget would timeout
-                    Ui.switchToView(new gimporterView(), new gimporterPost(course), Ui.SLIDE_IMMEDIATE);
                     System.println("Found course: " + course.getName() + " asking for start");
-                    Ui.requestUpdate();
-                    return;
+                    Ui.popView(Ui.SLIDE_IMMEDIATE);
+                    canLoadList = true;
+                    status = Rez.Strings.PressStart;
+                    // FIXME: Garmin
+                    // I can't do System.exitTo(course.toIntent())
+                    // It causes the Fenix5 to be in a strange state
+                    exitInto(course);
+                    break;
                 } else {
                     System.println(course.getName() + " != " + trackToStart);
                 }
             }
-            Ui.switchToView(new gimporterView(), new gimporterPost(null), Ui.SLIDE_IMMEDIATE);
             Ui.requestUpdate();
             return;
         }
+    }
+}
+
+class gimporterView extends Ui.View {
+    var st;
+    var ps;
+    var app;
+
+    function initialize() {
+        View.initialize();
+        app = App.getApp();
+    }
+
+    function onLayout(dc) {
+        setLayout(Rez.Layouts.MainLayout(dc));
+        st = findDrawableById("status");
+        ps = Ui.loadResource(Rez.Strings.PressStart);
+    }
+
+    function onUpdate(dc) {
+        var status = app.getStatus();
+        if (status.equals("")) {
+            st.setText(ps);
+        } else {
+            st.setText(status);
+        }
+
+        View.onUpdate(dc);
+    }
+}
+
+class gimporterDelegate extends Ui.BehaviorDelegate {
+    var app;
+
+    function initialize() {
+        BehaviorDelegate.initialize();
+        app = App.getApp();
+    }
+
+    function onBack() {
+        app.canLoadList = true;
+        app.status = Rez.Strings.PressStart;
+    }
+
+    function onKey(key) {
+        var k = key.getKey();
+
+        if (k == Ui.KEY_ENTER || k == Ui.KEY_START || k == Ui.KEY_RIGHT) {
+            if (app.canLoadList) {
+                app.loadTrackList();
+            }
+            return true;
+        }
+
+        return BehaviorDelegate.onKey(key);
     }
 }
