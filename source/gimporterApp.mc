@@ -59,6 +59,9 @@ class gimporterApp extends App.AppBase {
     }
 
     function loadTrackList() {
+        tracks = null;
+        trackToStart = null;
+        mCourse = null;
         if (! System.getDeviceSettings().phoneConnected) {
             bluetoothTimer.stop();
             status = Rez.Strings.WaitingForBluetooth;
