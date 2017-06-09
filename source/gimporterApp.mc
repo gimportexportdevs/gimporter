@@ -20,19 +20,11 @@ class gimporterApp extends App.AppBase {
         tracks = null;
         canLoadList = true;
         status = "";
-        mGPXorFIT = getPropertyDef("GPXorFIT", "FIT");
+        mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
+        System.println("GPXorFit = " + mGPXorFIT);
         bluetoothTimer = new Timer.Timer();
         exitTimer = new Timer.Timer();
         mCourse = null;
-    }
-
-    function getPropertyDef(key, def) {
-        var val = getProperty(key);
-        if (val == null) {
-            return def;
-        } else {
-            return val;
-        }
     }
 
     // onStart() is called on application start up
@@ -228,33 +220,54 @@ class gimporterApp extends App.AppBase {
                 trackToStart = trackToStart.substring(0, 15);
             }
 
-            var cit = PC.getCourses();
-            var course;
-            while (true) {
-                course = cit.next();
-                if (course == null) {
-                    break;
-                }
-                var coursename = course.getName();
-                if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
-                    System.println("Found course: " + course.getName() + " asking for start");
-                    Ui.popView(Ui.SLIDE_IMMEDIATE);
-                    canLoadList = true;
-                    status = Rez.Strings.PressStart;
-                    // FIXME: Garmin
-                    // I can't do System.exitTo(course.toIntent())
-                    // It causes the Fenix5 to be in a strange state
-                    exitInto(course);
-                    break;
-                } else {
-                    System.println(course.getName() + " != " + trackToStart);
-                }
+            var cit = null;
+            if (PC has :getCourses) {
+                System.println("Searching in courses");
+                cit = PC.getCourses();
+            }
+
+            if ((searchCourse(cit) == false) && (PC has :getTracks)) {
+                System.println("Searching in tracks");
+                cit = PC.getTracks();
+            }
+
+            if ((searchCourse(cit) == false) && (PC has :getRoutes)) {
+                System.println("Searching in routes");
+                cit = PC.getRoutes();
+                searchCourse(cit);
             }
             Ui.requestUpdate();
             return;
         }
     }
+
+    function searchCourse(cit) {
+        var course;
+        while (cit != null) {
+            course = cit.next();
+            if (course == null) {
+                break;
+            }
+            var coursename = course.getName();
+            if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
+                System.println("Found course: " + course.getName() + " asking for start");
+                Ui.popView(Ui.SLIDE_IMMEDIATE);
+                canLoadList = true;
+                status = Rez.Strings.PressStart;
+                // FIXME: Garmin
+                // I can't do System.exitTo(course.toIntent())
+                // It causes the Fenix5 to be in a strange state
+                exitInto(course);
+                return true;
+            } else {
+                System.println(course.getName() + " != " + trackToStart);
+            }
+        }
+        return false;
+    }
 }
+
+
 
 class gimporterView extends Ui.View {
     var st;
@@ -295,18 +308,20 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
     function onBack() {
         app.canLoadList = true;
         app.status = Rez.Strings.PressStart;
+        return false;
     }
 
-    function onKey(key) {
-        var k = key.getKey();
-
-        if (k == Ui.KEY_ENTER || k == Ui.KEY_START || k == Ui.KEY_RIGHT) {
-            if (app.canLoadList) {
-                app.loadTrackList();
-            }
-            return true;
+    function onMenu() {
+        if (app.canLoadList) {
+            app.loadTrackList();
         }
+        return true;
+    }
 
-        return BehaviorDelegate.onKey(key);
+    function onSelect() {
+        if (app.canLoadList) {
+            app.loadTrackList();
+        }
+        return true;
     }
 }
