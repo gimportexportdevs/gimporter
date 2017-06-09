@@ -65,7 +65,7 @@ class gimporterApp extends App.AppBase {
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {
-            Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT, "short" => "1" },
+            Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT, "short" => "1", "longname" => "1" },
                                 {
                                     :method => Comm.HTTP_REQUEST_METHOD_GET,
                                         :headers => {
@@ -157,10 +157,10 @@ class gimporterApp extends App.AppBase {
         try {
             if (mGPXorFIT.equals("FIT")) {
                 System.println("Downloading FIT");
-                Comm.makeWebRequest(trackurl, { "type" => "FIT" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
+                Comm.makeWebRequest(trackurl, { "type" => "FIT", "longname" => "1" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
             } else {
                 System.println("Downloading GPX");
-                Comm.makeWebRequest(trackurl, { "type" => "GPX" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_GPX}, method(:onReceiveTrack) );
+                Comm.makeWebRequest(trackurl, { "type" => "GPX", "longname" => "1" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_GPX}, method(:onReceiveTrack) );
             }
         } catch( ex ) {
             status = Rez.Strings.DownloadNotSupported;
@@ -210,6 +210,7 @@ class gimporterApp extends App.AppBase {
             // Ui.switchToView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
             status = Rez.Strings.DownloadComplete;
 
+/*
             if (trackToStart.length() > 4) {
                 var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
                 if (postfix.equals(".fit") || postfix.equals(".gpx")) {
@@ -219,7 +220,7 @@ class gimporterApp extends App.AppBase {
             if (trackToStart.length() > 15) {
                 trackToStart = trackToStart.substring(0, 15);
             }
-
+*/
             var cit = null;
             if (PC has :getCourses) {
                 System.println("Searching in courses");
@@ -243,25 +244,47 @@ class gimporterApp extends App.AppBase {
 
     function searchCourse(cit) {
         var course;
+        var startcourse = null;
+        var startcoursename = null;
+        var sclen = 0;
+        var tlen = trackToStart.length();
+
+        // Search for the longest coursename matching ours
         while (cit != null) {
             course = cit.next();
             if (course == null) {
                 break;
             }
             var coursename = course.getName();
-            if (coursename.equals(trackToStart) || coursename.equals(trackToStart + "_course.fit")) {
-                System.println("Found course: " + course.getName() + " asking for start");
-                Ui.popView(Ui.SLIDE_IMMEDIATE);
-                canLoadList = true;
-                status = Rez.Strings.PressStart;
-                // FIXME: Garmin
-                // I can't do System.exitTo(course.toIntent())
-                // It causes the Fenix5 to be in a strange state
-                exitInto(course);
-                return true;
-            } else {
-                System.println(course.getName() + " != " + trackToStart);
+            var clen = coursename.length();
+
+            if ((clen > 11) && coursename.substring(clen-11, clen).equals("_course.fit")) {
+                coursename = coursename.substring(0, clen-11);
+                clen = clen - 11;
             }
+
+            System.println("Checking if " + trackToStart + " == " + coursename);
+
+            if ((clen > tlen) || (sclen > clen) || (!trackToStart.substring(0, clen).equals(coursename))) {
+                continue;
+            }
+            startcourse = course;
+            startcoursename = coursename;
+            sclen = clen;
+        }
+
+        if (startcourse != null) {
+            System.println("Found course: " + startcourse.getName() + " asking for start");
+            Ui.popView(Ui.SLIDE_IMMEDIATE);
+            canLoadList = true;
+            status = Rez.Strings.PressStart;
+            // FIXME: Garmin
+            // I can't do System.exitTo(course.toIntent())
+            // It causes the Fenix5 to be in a strange state
+            exitInto(startcourse);
+            return true;
+        } else {
+            System.println("No course found");
         }
         return false;
     }
