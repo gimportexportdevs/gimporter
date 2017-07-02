@@ -5,8 +5,8 @@ SOURCES = $(shell find source -name '[^.]*.mc')
 RESOURCE_FLAGS = $(shell find resources* -name '[^.]*.xml' | tr '\n' ':' | sed 's/.$$//')
 RESFILES = $(shell find resources* -name '[^.]*.xml')
 APPNAME = $(shell grep entry manifest-app.xml | sed 's/.*entry="\([^"]*\).*/\1/' | sed 's/App$$//')
-SIMULATOR = $(shell [ "$$(uname)" == "Linux" ] && echo "wine32 $(SDK_HOME)/bin/simulator.exe" || echo '$(SDK_HOME)/bin/connectiq')
-MONKEYC = java -Dfile.encoding=UTF-8 -Dapple.awt.UIElement=true -jar $(SDK_HOME)/bin/monkeybrains.jar
+SIMULATOR = $(SDK_HOME)/bin/connectiq
+MONKEYC = $(SDK_HOME)/bin/monkeyc
 
 .PHONY: build deploy buildall run package clean sim package-widget package-app
 
@@ -48,7 +48,7 @@ buildall:
 	done
 
 sim:
-	@pidof 'simulator.exe' &>/dev/null || ( $(SIMULATOR) & sleep 3 )
+	@pidof 'simulator*' &>/dev/null || ( $(SIMULATOR) & sleep 3 )
 
 run: sim bin/$(APPNAME)-$(DEVICE).prg
 	$(SDK_HOME)/bin/monkeydo bin/$(APPNAME)-$(DEVICE).prg $(DEVICE) &
