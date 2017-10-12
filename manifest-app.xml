@@ -11,6 +11,7 @@
             <iq:product id="edge_1000"/>
             <iq:product id="edge_520"/>
             <iq:product id="edge820"/>
+            <iq:product id="edge1030"/>
             <iq:product id="oregon7xx"/>
             <iq:product id="rino7xx"/>
         </iq:products>
