@@ -4,3 +4,5 @@
 /manifest.xml
 /manifest-widget.xml
 /bin
+.DS_Store
+/.settings
