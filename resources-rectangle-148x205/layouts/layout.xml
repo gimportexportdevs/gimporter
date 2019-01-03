@@ -1,5 +1,5 @@
 <layout id="MainLayout">
 	<label text="@Strings.AppName" x="center" y="25" font="Gfx.FONT_XTINY"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
         <label id="status" text="@Strings.PressStart" x="center" y="center"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" font="Gfx.FONT_MEDIUM" />
-	<label text="@Strings.AppVersion" x="center" y="170" font="Gfx.FONT_XTINY"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
+	<label text="@Strings.AppVersion" x="center" y="175" font="Gfx.FONT_XTINY"  color="Gfx.COLOR_WHITE" justification="Gfx.TEXT_JUSTIFY_CENTER" />
 </layout>
