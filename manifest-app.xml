@@ -28,9 +28,6 @@
             <iq:product id="gpsmap66"/>
             <iq:product id="oregon7xx"/>
             <iq:product id="rino7xx"/>
-            <iq:product id="vivoactive3"/>
-            <iq:product id="vivoactive3m"/>
-            <iq:product id="vivoactive_hr"/>
         </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications"/>

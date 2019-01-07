@@ -2,7 +2,6 @@ include properties.mk
 
 SUPPORTED_DEVICES_LIST = $(shell sed -n -e 's/<iq:product id="\(.*\)"\/>/\1/p' manifest-app.xml)
 SOURCES = $(shell find source -name '[^.]*.mc')
-RESOURCE_FLAGS = $(shell find resources* -name '[^.]*.xml' | tr '\n' ':' | sed 's/.$$//')
 RESFILES = $(shell find resources* -name '[^.]*.xml')
 APPNAME = $(shell grep entry manifest-app.xml | sed 's/.*entry="\([^"]*\).*/\1/' | sed 's/App$$//')
 SIMULATOR = $(SDK_HOME)/bin/connectiq
@@ -19,32 +18,32 @@ clean:
 build: bin/$(APPNAME)-$(DEVICE).prg bin/$(APPNAME)-widget-$(DEVICE).prg
 
 bin/$(APPNAME)-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-app.xml
-	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE).prg -m manifest-app.xml \
-	-z $(RESOURCE_FLAGS) \
+	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE).prg \
+	-f 'monkey-base.jungle;monkey-app.jungle' \
 	-y $(PRIVATE_KEY) \
-	-d $(DEVICE) $(SOURCES)
+	-d $(DEVICE)
 
 bin/$(APPNAME)-widget-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-widget.xml
-	$(MONKEYC) --warn --output bin/$(APPNAME)-widget-$(DEVICE).prg -m manifest-widget.xml \
-	-z $(RESOURCE_FLAGS) \
+	$(MONKEYC) --warn --output bin/$(APPNAME)-widget-$(DEVICE).prg \
+	-f 'monkey-base.jungle;monkey-widget.jungle' \
 	-y $(PRIVATE_KEY) \
-	-d $(DEVICE) $(SOURCES)
+	-d $(DEVICE)
 
 bin/$(APPNAME)-$(DEVICE)-test.prg: $(SOURCES) $(RESFILES)
-	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE)-test.prg -m manifest-app.xml \
-	-z $(RESOURCE_FLAGS) \
+	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE)-test.prg \
+	-f 'monkey-base.jungle;monkey-app.jungle' \
 	-y $(PRIVATE_KEY) \
 	--unit-test \
-	-d $(DEVICE) $(SOURCES)
+	-d $(DEVICE)
 
 buildall:
 	@for device in $(SUPPORTED_DEVICES_LIST); do \
 		echo "-----"; \
 		echo "Building for" $$device; \
-		$(MONKEYC) --warn --output bin/$(APPNAME)-$$device.prg -m manifest-app.xml \
-			   -z $(RESOURCE_FLAGS) \
+		$(MONKEYC) --warn --output bin/$(APPNAME)-$$device.prg \
+			   -f 'monkey-base.jungle;monkey-app.jungle' \
 			   -y $(PRIVATE_KEY) \
-                           -d $$device $(SOURCES); \
+                           -d $$device; \
 	done
 
 sim:
@@ -70,13 +69,9 @@ manifest-widget.xml: manifest-app.xml
 package: package-app package-widget
 
 package-app:
-	@$(MONKEYC) --warn -e --output bin/$(APPNAME)-app.iq -m manifest-app.xml \
-	-z $(RESOURCE_FLAGS) \
-	-y $(PRIVATE_KEY) \
-	$(SOURCES) -r
+	$(MONKEYC) --warn -e --output bin/$(APPNAME)-app.iq -f 'monkey-base.jungle;monkey-app.jungle' \
+	-y $(PRIVATE_KEY) -r
 
 package-widget: manifest-widget.xml
-	@$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -m manifest-widget.xml \
-	-z $(RESOURCE_FLAGS) \
-	-y $(PRIVATE_KEY) \
-	$(SOURCES) -r
+	@$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -f 'monkey-base.jungle;monkey-widget.jungle' \
+	-y $(PRIVATE_KEY) -r
