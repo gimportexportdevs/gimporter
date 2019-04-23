@@ -54,7 +54,10 @@ class gimporterApp extends App.AppBase {
         tracks = null;
         trackToStart = null;
         mCourse = null;
-        if (! System.getDeviceSettings().phoneConnected) {
+
+        var settings = System.getDeviceSettings();
+
+        if (! settings.phoneConnected) {
             bluetoothTimer.stop();
             status = Rez.Strings.WaitingForBluetooth;
             bluetoothTimer.start(method(:loadTrackList), 1000, false);
@@ -62,6 +65,22 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
+        if ((settings has :connectionInfo) && (settings.connectionInfo has :wifi) && (settings.connectionInfo[:wifi].state == CONNECTION_STATE_CONNECTED)) {
+            bluetoothTimer.stop();
+            status = Rez.Strings.SwitchOffWifi;
+            bluetoothTimer.start(method(:loadTrackList), 1000, false);
+            Ui.requestUpdate();
+            return;
+        }
+/*
+        if ((settings has :connectionInfo) || !(settings.connectionInfo has :bluetooth) || (settings.connectionInfo[:bluetooth].state != CONNECTION_STATE_CONNECTED)) {
+            bluetoothTimer.stop();
+            status = Rez.Strings.WaitingForBluetooth;
+            bluetoothTimer.start(method(:loadTrackList), 1000, false);
+            Ui.requestUpdate();
+            return;
+        }
+*/
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {

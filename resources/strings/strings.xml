@@ -5,6 +5,7 @@
     <string id="GettingTracklist">Getting track list</string>
     <string id="BluetoothDisconnected">Bluetooth disconnected</string>
     <string id="WaitingForBluetooth">Waiting for Bluetooth</string>
+    <string id="SwitchOffWifi">Please switch off Wifi</string>
     <string id="ConnectionFailed">Connection failed</string>
     <string id="trackChooserTitle">Select Track</string>
     <string id="DownloadFailed">Download failed</string>
