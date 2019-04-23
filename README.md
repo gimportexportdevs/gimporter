@@ -15,3 +15,6 @@ Garmin Connect App to import GPX and FIT files
 ## TODO
 * use the companion SDK
 * let the user configure the initial URL/server/port
+
+## iOS
+* There is an experimental iOS app https://github.com/clawoo/gexporter-ios
