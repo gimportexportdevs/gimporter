@@ -12,7 +12,7 @@ class gimporterApp extends App.AppBase {
     var status;
     var mGPXorFIT;
     var bluetoothTimer;
-    var mCourse;
+    var mIntent;
     var exitTimer;
 
     function initialize() {
@@ -24,7 +24,7 @@ class gimporterApp extends App.AppBase {
         System.println("GPXorFit = " + mGPXorFIT);
         bluetoothTimer = new Timer.Timer();
         exitTimer = new Timer.Timer();
-        mCourse = null;
+        mIntent = null;
     }
 
     // onStart() is called on application start up
@@ -53,7 +53,7 @@ class gimporterApp extends App.AppBase {
     function loadTrackList() {
         tracks = null;
         trackToStart = null;
-        mCourse = null;
+        mIntent = null;
 
         var settings = System.getDeviceSettings();
 
@@ -187,20 +187,20 @@ class gimporterApp extends App.AppBase {
     }
 
     function doExitInto() {
-        if (mCourse != null) {
-            System.exitTo(mCourse.toIntent());
-            mCourse = null;
+        if (mIntent != null) {
+            System.exitTo(mIntent);
+            mIntent = null;
         }
     }
 
-    function exitInto(course) {
-        if (course != null) {
-            mCourse = course;
+    function exitInto(intent) {
+        if (intent != null) {
+            mIntent = intent;
             exitTimer.start(method(:doExitInto), 200, false);
         }
     }
 
-    function onReceiveTrack(responseCode, data) {
+    function onReceiveTrack(responseCode, downloads) {
         System.println("onReceiveTrack");
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
@@ -215,19 +215,29 @@ class gimporterApp extends App.AppBase {
             Ui.requestUpdate();
             return;
         }
-        else if (data == null) {
-            System.println("data == null");
+        else if (downloads == null) {
+            System.println("downloads == null");
             status = Rez.Strings.DownloadFailed;
             Ui.requestUpdate();
             return;
         }
         else {
-            System.println(data.toString());
+            var download = downloads.next();
+            System.println("onReceiveTrack: " + (download == null ? null : download.getName() + "/" + download.getId()));
 
             // FIXME: Garmin
             // Without switchToView() the widget is gone
-            // Ui.switchToView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
+            Ui.switchToView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
+
             status = Rez.Strings.DownloadComplete;
+
+            if (download != null) {
+                Ui.requestUpdate();
+                exitInto(download.toIntent());
+                return;
+            }
+
+            status = Rez.Strings.AlreadyDownloaded;
 
 /*
             if (trackToStart.length() > 4) {
@@ -240,22 +250,35 @@ class gimporterApp extends App.AppBase {
                 trackToStart = trackToStart.substring(0, 15);
             }
 */
-            var cit = null;
+            var ret = false;
+
+            if (PC has :getAppCourses) {
+                System.println("Searching in App courses");
+                ret = searchCourse(PC.getAppCourses());
+            }
             if (PC has :getCourses) {
                 System.println("Searching in courses");
-                cit = PC.getCourses();
+                ret = searchCourse(PC.getCourses());
             }
 
-            if ((searchCourse(cit) == false) && (PC has :getTracks)) {
+            if ((ret == false) && (PC has :getAppTracks)) {
+                System.println("Searching in App tracks");
+                ret = searchCourse(PC.getTracks());
+            }
+            if ((ret == false) && (PC has :getTracks)) {
                 System.println("Searching in tracks");
-                cit = PC.getTracks();
+                ret = searchCourse(PC.getTracks());
             }
 
-            if ((searchCourse(cit) == false) && (PC has :getRoutes)) {
-                System.println("Searching in routes");
-                cit = PC.getRoutes();
-                searchCourse(cit);
+            if ((ret == false ) && (PC has :getAppRoutes)) {
+                System.println("Searching in App routes");
+                ret = searchCourse(PC.getAppRoutes());
             }
+            if ((ret == false ) && (PC has :getRoutes)) {
+                System.println("Searching in routes");
+                ret = searchCourse(PC.getRoutes());
+            }
+
             Ui.requestUpdate();
             return;
         }
@@ -282,6 +305,8 @@ class gimporterApp extends App.AppBase {
                 clen = clen - 11;
             }
 
+            // Shortened course names end with 60b2 on Fenix 5
+
             System.println("Checking if " + trackToStart + " == " + coursename);
 
             if ((clen > tlen) || (sclen > clen) || (!trackToStart.substring(0, clen).equals(coursename))) {
@@ -300,7 +325,7 @@ class gimporterApp extends App.AppBase {
             // FIXME: Garmin
             // I can't do System.exitTo(course.toIntent())
             // It causes the Fenix5 to be in a strange state
-            exitInto(startcourse);
+            exitInto(startcourse.toIntent()); // workaround
             return true;
         } else {
             System.println("No course found");
