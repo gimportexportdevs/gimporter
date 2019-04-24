@@ -30,10 +30,12 @@
             <iq:product id="oregon7xx"/>
             <iq:product id="rino7xx"/>
             <iq:product id="marqathlete"/>
-            <iq:product id="marqdriver"/>
-            <iq:product id="marqexpedition"/>
             <iq:product id="marqaviator"/>
             <iq:product id="marqcaptain"/>
+            <iq:product id="marqdriver"/>
+            <iq:product id="marqexpedition"/>
+            <!-- <iq:product id="fr945"/> -->
+            <!-- <iq:product id="fr245"/> -->
          </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications"/>
