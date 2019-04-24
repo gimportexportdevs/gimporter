@@ -4,7 +4,7 @@ SUPPORTED_DEVICES_LIST = $(shell sed -n -e 's/<iq:product id="\(.*\)"\/>/\1/p' m
 SOURCES = $(shell find source -name '[^.]*.mc')
 RESFILES = $(shell find resources* -name '[^.]*.xml')
 APPNAME = $(shell grep entry manifest-app.xml | sed 's/.*entry="\([^"]*\).*/\1/' | sed 's/App$$//')
-SIMULATOR = $(SDK_HOME)/bin/connectiq
+SIMULATOR = LD_LIBRARY_PATH=$(SDK_HOME)/bin $(SDK_HOME)/bin/connectiq
 MONKEYC = $(SDK_HOME)/bin/monkeyc
 
 .PHONY: build deploy buildall run package clean sim package-widget package-app
@@ -57,9 +57,11 @@ test: sim bin/$(APPNAME)-$(DEVICE)-test.prg
 
 $(DEPLOY)/$(APPNAME).prg: bin/$(APPNAME)-$(DEVICE).prg
 	@cp bin/$(APPNAME)-$(DEVICE).prg $(DEPLOY)/$(APPNAME).prg
+	@touch $(DEPLOY)/LOGS/76963622.TXT
 
 $(DEPLOY)/$(APPNAME)-widget.prg: bin/$(APPNAME)-widget-$(DEVICE).prg
 	@cp bin/$(APPNAME)-widget-$(DEVICE).prg $(DEPLOY)/$(APPNAME)-widget.prg
+	@touch $(DEPLOY)/LOGS/76A74803.TXT
 
 deploy: build $(DEPLOY)/$(APPNAME).prg $(DEPLOY)/$(APPNAME)-widget.prg
 
