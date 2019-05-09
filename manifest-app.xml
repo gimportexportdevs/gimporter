@@ -34,8 +34,8 @@
             <iq:product id="marqcaptain"/>
             <iq:product id="marqdriver"/>
             <iq:product id="marqexpedition"/>
-            <!-- <iq:product id="fr945"/> -->
-            <!-- <iq:product id="fr245"/> -->
+            <iq:product id="fr945"/>
+            <iq:product id="fr245"/>
          </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications"/>

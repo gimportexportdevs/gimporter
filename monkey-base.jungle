@@ -28,6 +28,8 @@ fr645.resourcePath = resources-launcher-40x40;resources-fit;$(fr645.resourcePath
 fr645m.resourcePath = resources-launcher-40x40;resources-fit;$(fr645m.resourcePath)
 fr735xt.resourcePath = resources-launcher-40x40;resources-fit;$(fr735xt.resourcePath)
 fr935.resourcePath = resources-launcher-40x40;resources-fit;$(fr935.resourcePath)
+fr945.resourcePath = resources-launcher-40x40;resources-fit;$(fr945.resourcePath)
+fr245.resourcePath = resources-launcher-40x40;resources-fit;$(fr245.resourcePath)
 
 marqathlete.resourcePath = resources-launcher-40x40;resources-fit;$(marqathlete.resourcePath)
 marqdriver.resourcePath = resources-launcher-40x40;resources-fit;$(marqdriver.resourcePath)
