@@ -209,6 +209,12 @@ class gimporterApp extends App.AppBase {
             Ui.requestUpdate();
             return;
         }
+        else if (responseCode == STORAGE_FULL) {
+            System.println("Code: " + responseCode);
+            status = Rez.Strings.StorageFull;
+            Ui.requestUpdate();
+            return;
+        }
         else if (responseCode != 200) {
             System.println("Code: " + responseCode);
             status = Rez.Strings.DownloadFailed;
