@@ -84,7 +84,7 @@ class gimporterApp extends App.AppBase {
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {
-            Comm.makeWebRequest("http://localhost:22222/dir.json", { "type" => mGPXorFIT, "short" => "1", "longname" => "1" },
+            Comm.makeWebRequest("http://127.0.0.1:22222/dir.json", { "type" => mGPXorFIT, "short" => "1", "longname" => "1" },
                                 {
                                     :method => Comm.HTTP_REQUEST_METHOD_GET,
                                         :headers => {
@@ -163,7 +163,7 @@ class gimporterApp extends App.AppBase {
         trackToStart = tracks[index]["title"];
 
         if ((trackurl.length() < 7) || (!trackurl.substring(0, 7).equals("http://"))) {
-            trackurl = "http://localhost:22222/" + trackurl;
+            trackurl = "http://127.0.0.1:22222/" + trackurl;
         }
 
         status = Rez.Strings.Downloading;
