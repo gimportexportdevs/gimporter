@@ -75,5 +75,5 @@ package-app:
 	-y $(PRIVATE_KEY) -r
 
 package-widget: manifest-widget.xml
-	@$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -f 'monkey-base.jungle;monkey-widget.jungle' \
+	$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -f 'monkey-base.jungle;monkey-widget.jungle' \
 	-y $(PRIVATE_KEY) -r
