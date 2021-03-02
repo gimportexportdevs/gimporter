@@ -114,7 +114,7 @@ class gimporterApp extends App.AppBase {
         }
 
         if (responseCode != 200) {
-            System.println("data == null" + responseCode.toString());
+            System.println("data == null\nCode " + responseCode.toString() + "\n");
             status = Rez.Strings.ConnectionFailed;
             Ui.requestUpdate();
             return;
@@ -375,6 +375,7 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
     function onBack() {
         app.canLoadList = true;
         app.status = Rez.Strings.PressStart;
+        Ui.requestUpdate();
         return false;
     }
 
