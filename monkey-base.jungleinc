@@ -3,14 +3,21 @@ base.sourcePath = source
 gpsmap66.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap66.resourcePath)
 oregon7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(oregon7xx.resourcePath)
 rino7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(rino7xx.resourcePath)
+montana7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(montana7xx.resourcePath)
 
 approachs60.resourcePath = resources-launcher-40x33;resources-fit;$(approachs60.resourcePath)
+approachs62.resourcePath = resources-launcher-33x33;resources-fit;$(approachs62.resourcePath)
+
+d2air.resourcePath = resources-launcher-54x54;resources-fit;$(d2air.resourcePath)
 d2charlie.resourcePath = resources-launcher-40x40;resources-fit;$(d2charlie.resourcePath)
 d2delta.resourcePath = resources-launcher-40x40;resources-fit;$(d2delta.resourcePath)
 d2deltapx.resourcePath = resources-launcher-40x40;resources-fit;$(d2deltapx.resourcePath)
 d2deltas.resourcePath = resources-launcher-40x40;resources-fit;$(d2deltas.resourcePath)
 descentmk1.resourcePath = resources-launcher-40x40;resources-fit;$(descentmk1.resourcePath)
+descentmk2.resourcePath = resources-launcher-40x40;resources-fit;$(descentmk2.resourcePath)
+
 edge1030.resourcePath = resources-launcher-36x36;resources-fit;$(edge1030.resourcePath)
+edge1030plus.resourcePath = resources-launcher-36x36;resources-fit;$(edge1030plus.resourcePath)
 edge1030bontrager.resourcePath = resources-launcher-36x36;resources-fit;$(edge1030bontrager.resourcePath)
 edge520plus.resourcePath = resources-launcher-35x35;resources-fit;$(edge520plus.resourcePath)
 edge530.resourcePath = resources-launcher-35x35;resources-fit;$(edge530.resourcePath)
@@ -19,6 +26,7 @@ edge820.resourcePath = resources-launcher-35x35;resources-fit;$(edge820.resource
 edge_1000.resourcePath = resources-launcher-36x36;resources-fit;$(edge_1000.resourcePath)
 edge_520.resourcePath = resources-launcher-35x35;resources-fit;$(edge_520.resourcePath)
 edgeexplore.resourcePath = resources-launcher-36x36;resources-fit;$(edgeexplore.resourcePath)
+
 fenix5.resourcePath = resources-launcher-40x40;resources-fit;$(fenix5.resourcePath)
 fenix5plus.resourcePath = resources-launcher-40x40;resources-fit;$(fenix5plus.resourcePath)
 fenix5s.resourcePath = resources-launcher-36x36;resources-fit;$(fenix5s.resourcePath)
@@ -42,5 +50,9 @@ fenix6xpro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix6xpro.re
 marqathlete.resourcePath = resources-launcher-40x40;resources-fit;$(marqathlete.resourcePath)
 marqdriver.resourcePath = resources-launcher-40x40;resources-fit;$(marqdriver.resourcePath)
 marqexpedition.resourcePath = resources-launcher-40x40;resources-fit;$(marqexpedition.resourcePath)
+marqadventurer.resourcePath = resources-launcher-40x40;resources-fit;$(marqadventurer.resourcePath)
 marqaviator.resourcePath = resources-launcher-40x40;resources-fit;$(marqaviator.resourcePath)
 marqcaptain.resourcePath = resources-launcher-40x40;resources-fit;$(marqcaptain.resourcePath)
+marqgolfer.resourcePath = resources-launcher-40x40;resources-fit;$(marqgolfer.resourcePath)
+
+enduro.resourcePath = resources-launcher-40x40;resources-fit;$(enduro.resourcePath)
