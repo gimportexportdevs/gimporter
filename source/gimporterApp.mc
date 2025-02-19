@@ -90,13 +90,18 @@ class gimporterApp extends App.AppBase {
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {
-            Comm.makeWebRequest("http://127.0.0.1:22222/dir.json", { "type" => mGPXorFIT, "short" => "1", "longname" => "1" },
-            {
-                :method => Comm.HTTP_REQUEST_METHOD_GET,
-                :headers => {
-                    "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON },
-                :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON },
-            method(:onReceiveTracks) );
+            Comm.makeWebRequest(
+                "http://127.0.0.1:22222/dir.json",
+                {
+                    "type" => mGPXorFIT,
+                    "short" => "1",
+                    "longname" => "1" },
+                {
+                    :method => Comm.HTTP_REQUEST_METHOD_GET,
+                    :headers => {
+                        "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON },
+                    :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON },
+                method(:onReceiveTracks) );
         } catch( ex ) {
             canLoadList = true;
             status = ex.getErrorMessage();
