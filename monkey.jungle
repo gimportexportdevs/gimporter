@@ -3,6 +3,7 @@ project.manifest = manifest-app.xml
 base.sourcePath = source
 
 gpsmap66.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap66.resourcePath)
+gpsmap67.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap67.resourcePath)
 oregon7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(oregon7xx.resourcePath)
 rino7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(rino7xx.resourcePath)
 montana7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(montana7xx.resourcePath)
