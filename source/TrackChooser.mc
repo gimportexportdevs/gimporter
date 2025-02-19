@@ -10,19 +10,23 @@ class TrackChooser extends Ui.Menu {
         var app = $.getApp();
         Menu.initialize();
         Menu.setTitle(Rez.Strings.trackChooserTitle);
-        var tracks = app.getTracks();
+        var tracks = app.getTracks() as [ Dictionary ];
         var num = tracks.size();
         var off = page*15;
         if ((num - off) <= 16) {
             // simple case, all fit in
             for(var i = page*15; i < num; i++) {
-                Menu.addItem(tracks[i]["title"], toSym(i - off));
+                Menu.addItem(
+                    tracks[i]["title"],
+                    toSym(i - off) );
             }
             return;
         }
 
         for(var i = off, iMax = 15 + off; i < iMax; i++) {
-            Menu.addItem(tracks[i]["title"], toSym(i - off));
+            Menu.addItem(
+                tracks[i]["title"],
+                toSym(i - off) );
         }
         Menu.addItem(Rez.Strings.MORE, :MORE);
     }

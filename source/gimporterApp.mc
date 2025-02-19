@@ -168,8 +168,8 @@ class gimporterApp extends App.AppBase {
         System.println("loadTrack: " + tracks[index].toString());
 
         // TODO: check hasKey
-        var trackurl = tracks[index]["url"];
-        trackToStart = tracks[index]["title"];
+        var trackurl = (tracks[index] as Dictionary)["url"];
+        trackToStart = (tracks[index] as Dictionary)["title"];
 
         if ((trackurl.length() < 7) || (!trackurl.substring(0, 7).equals("http://"))) {
             trackurl = "http://127.0.0.1:22222/" + trackurl;
@@ -179,20 +179,41 @@ class gimporterApp extends App.AppBase {
         canLoadList = false;
         System.println("GPXorFIT: " + mGPXorFIT);
 
-        Ui.pushView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
+        Ui.pushView(
+            new gimporterView(),
+            new gimporterDelegate(),
+            Ui.SLIDE_IMMEDIATE );
         Ui.requestUpdate();
 
         try {
             if (mGPXorFIT.equals("FIT")) {
                 System.println("Downloading FIT");
-                Comm.makeWebRequest(trackurl, { "type" => "FIT", "longname" => "1" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT}, method(:onReceiveTrack) );
+                Comm.makeWebRequest(
+                    trackurl,
+                    {
+                        "type" => "FIT",
+                        "longname" => "1" },
+                    {
+                        :method => Comm.HTTP_REQUEST_METHOD_GET,
+                        :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_FIT },
+                    method(:onReceiveTrack) );
             } else {
                 System.println("Downloading GPX");
-                Comm.makeWebRequest(trackurl, { "type" => "GPX", "longname" => "1" }, {:method => Comm.HTTP_REQUEST_METHOD_GET,:responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_GPX}, method(:onReceiveTrack) );
+                Comm.makeWebRequest(
+                    trackurl,
+                    {
+                        "type" => "GPX",
+                        "longname" => "1" },
+                    {
+                        :method => Comm.HTTP_REQUEST_METHOD_GET,
+                        :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_GPX },
+                    method(:onReceiveTrack) );
             }
         } catch( ex ) {
             status = Rez.Strings.DownloadNotSupported;
         }
+
+        Ui.requestUpdate();
     }
 
     function doExitInto() as Void {
