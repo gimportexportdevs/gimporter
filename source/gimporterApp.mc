@@ -1,56 +1,62 @@
+import Toybox.Lang;
+
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
 using Toybox.PersistedContent as PC;
-using Toybox.Timer as Timer;
+using Toybox.Timer as TIME;
 using Toybox.System as System;
+using Toybox.Graphics as GFX;
+
+function getApp() as gimporterApp {
+    return App.getApp() as gimporterApp;
+}
 
 class gimporterApp extends App.AppBase {
-    var tracks;
-    var trackToStart;
-    var canLoadList;
-    var status;
-    var mGPXorFIT;
-    var bluetoothTimer;
-    var mIntent;
-    var exitTimer;
+    var tracks as Array? = null;
+    var trackToStart as String?;
+    var canLoadList as Boolean;
+    var status as String or ResourceId = "";
+    var mGPXorFIT as String;
+    var bluetoothTimer as TIME.Timer;
+    var exitTimer as TIME.Timer;
+    var mIntent as System.Intent? = null;
 
     function initialize() {
         AppBase.initialize();
-        tracks = null;
-        canLoadList = true;
-        status = "";
+
         mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
         System.println("GPXorFit = " + mGPXorFIT);
-        bluetoothTimer = new Timer.Timer();
-        exitTimer = new Timer.Timer();
-        mIntent = null;
+        
+        canLoadList = true;
+        bluetoothTimer = new TIME.Timer();
+        exitTimer = new TIME.Timer();
     }
 
     // onStart() is called on application start up
-    function onStart(state) {
+    function onStart(state as Lang.Dictionary?) as Void {
         //loadTrackList();
         status = Rez.Strings.PressStart;
     }
 
     // onStop() is called when your application is exiting
-    function onStop(state) {
+    function onStop(state as Lang.Dictionary?) as Void {
     }
 
     // Return the initial view of your application here
-    function getInitialView() {
+    function getInitialView() as [ Ui.Views ] or [ Ui.Views, Ui.InputDelegates ] {
         return [ new gimporterView(), new gimporterDelegate() ];
     }
 
-    function getStatus() {
+    function getStatus() as String {
         return status;
     }
 
-    function getTracks() {
+    function getTracks() as Array {
         return tracks;
     }
 
-    function loadTrackList() {
+    function loadTrackList() as Void {
         tracks = null;
         trackToStart = null;
         mIntent = null;
@@ -65,34 +71,32 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        if ((settings has :connectionInfo) && (settings.connectionInfo has :wifi) && (settings.connectionInfo[:wifi].state == CONNECTION_STATE_CONNECTED)) {
+        if ((settings has :connectionInfo) && (settings.connectionInfo has :wifi) && (settings.connectionInfo[:wifi].state == System.CONNECTION_STATE_CONNECTED)) {
             bluetoothTimer.stop();
             status = Rez.Strings.SwitchOffWifi;
             bluetoothTimer.start(method(:loadTrackList), 1000, false);
             Ui.requestUpdate();
             return;
         }
-/*
-        if ((settings has :connectionInfo) || !(settings.connectionInfo has :bluetooth) || (settings.connectionInfo[:bluetooth].state != CONNECTION_STATE_CONNECTED)) {
-            bluetoothTimer.stop();
-            status = Rez.Strings.WaitingForBluetooth;
-            bluetoothTimer.start(method(:loadTrackList), 1000, false);
-            Ui.requestUpdate();
-            return;
-        }
-*/
+
+        // if ((settings has :connectionInfo) || !(settings.connectionInfo has :bluetooth) || (settings.connectionInfo[:bluetooth].state != CONNECTION_STATE_CONNECTED)) {
+        //     bluetoothTimer.stop();
+        //     status = Rez.Strings.WaitingForBluetooth;
+        //     bluetoothTimer.start(method(:loadTrackList), 1000, false);
+        //     Ui.requestUpdate();
+        //     return;
+        // }
+
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {
             Comm.makeWebRequest("http://127.0.0.1:22222/dir.json", { "type" => mGPXorFIT, "short" => "1", "longname" => "1" },
-                                {
-                                    :method => Comm.HTTP_REQUEST_METHOD_GET,
-                                        :headers => {
-                                        "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON
-                                    },
-                                        :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON
-                                             }, method(:onReceiveTracks)
-                );
+            {
+                :method => Comm.HTTP_REQUEST_METHOD_GET,
+                :headers => {
+                    "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON },
+                :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON },
+            method(:onReceiveTracks) );
         } catch( ex ) {
             canLoadList = true;
             status = ex.getErrorMessage();
@@ -102,7 +106,7 @@ class gimporterApp extends App.AppBase {
 
     }
 
-    function onReceiveTracks(responseCode, data) {
+    function onReceiveTracks(responseCode as Number, data as Dictionary) as Void {
         status = "";
         canLoadList = true;
 
@@ -155,7 +159,7 @@ class gimporterApp extends App.AppBase {
 
     }
 
-    function loadTrackNum(index) {
+    function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + tracks[index].toString());
 
         // TODO: check hasKey
@@ -186,21 +190,21 @@ class gimporterApp extends App.AppBase {
         }
     }
 
-    function doExitInto() {
+    function doExitInto() as Void {
         if (mIntent != null) {
             System.exitTo(mIntent);
             mIntent = null;
         }
     }
 
-    function exitInto(intent) {
+    function exitInto(intent as System.Intent) as Void {
         if (intent != null) {
             mIntent = intent;
             exitTimer.start(method(:doExitInto), 200, false);
         }
     }
 
-    function onReceiveTrack(responseCode, downloads) {
+    function onReceiveTrack(responseCode as Number, downloads as PC.Iterator) as Void {
         System.println("onReceiveTrack");
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
@@ -239,17 +243,16 @@ class gimporterApp extends App.AppBase {
 
             status = Rez.Strings.AlreadyDownloaded;
 
-/*
-            if (trackToStart.length() > 4) {
-                var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
-                if (postfix.equals(".fit") || postfix.equals(".gpx")) {
-                    trackToStart = trackToStart.substring(0, trackToStart.length()-4);
-                }
-            }
-            if (trackToStart.length() > 15) {
-                trackToStart = trackToStart.substring(0, 15);
-            }
-*/
+            // if (trackToStart.length() > 4) {
+            //     var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
+            //     if (postfix.equals(".fit") || postfix.equals(".gpx")) {
+            //         trackToStart = trackToStart.substring(0, trackToStart.length()-4);
+            //     }
+            // }
+            // if (trackToStart.length() > 15) {
+            //     trackToStart = trackToStart.substring(0, 15);
+            // }
+
             var ret = false;
 
             if (PC has :getAppCourses) {
@@ -284,10 +287,10 @@ class gimporterApp extends App.AppBase {
         }
     }
 
-    function searchCourse(cit) {
+    function searchCourse(cit as PC.Iterator) as Boolean {
         var course;
         var startcourse = null;
-        var startcoursename = null;
+        // var startcoursename = null;  //not-used
         var sclen = 0;
         var tlen = trackToStart.length();
 
@@ -313,7 +316,7 @@ class gimporterApp extends App.AppBase {
                 continue;
             }
             startcourse = course;
-            startcoursename = coursename;
+            // startcoursename = coursename;
             sclen = clen;
         }
 
@@ -337,22 +340,22 @@ class gimporterApp extends App.AppBase {
 
 
 class gimporterView extends Ui.View {
-    var st;
-    var ps;
-    var app;
+    var st as Ui.Text?;
+    var ps as String or ResourceId = "";
+    var app as gimporterApp;
 
     function initialize() {
         View.initialize();
-        app = App.getApp();
+        app = $.getApp();
     }
 
-    function onLayout(dc) {
+    function onLayout(dc as GFX.Dc) as Void {
         setLayout(Rez.Layouts.MainLayout(dc));
         st = findDrawableById("status");
         ps = Ui.loadResource(Rez.Strings.PressStart);
     }
 
-    function onUpdate(dc) {
+    function onUpdate(dc as GFX.Dc) as Void {
         var status = app.getStatus();
         if (status.equals("")) {
             st.setText(ps);
@@ -365,28 +368,28 @@ class gimporterView extends Ui.View {
 }
 
 class gimporterDelegate extends Ui.BehaviorDelegate {
-    var app;
+    var app as gimporterApp;
 
     function initialize() {
         BehaviorDelegate.initialize();
         app = App.getApp();
     }
 
-    function onBack() {
+    function onBack() as Boolean {
         app.canLoadList = true;
         app.status = Rez.Strings.PressStart;
         Ui.requestUpdate();
         return false;
     }
 
-    function onMenu() {
+    function onMenu() as Boolean {
         if (app.canLoadList) {
             app.loadTrackList();
         }
         return true;
     }
 
-    function onSelect() {
+    function onSelect() as Boolean {
         if (app.canLoadList) {
             app.loadTrackList();
         }
