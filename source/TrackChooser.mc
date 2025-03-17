@@ -1,31 +1,37 @@
+import Toybox.Lang;
+
 using Toybox.Graphics as Gfx;
 using Toybox.WatchUi as Ui;
 using Toybox.Application as App;
 
 class TrackChooser extends Ui.Menu {
 
-    function initialize(page) {
-        var app = App.getApp();
+    function initialize(page as Number) {
+        var app = $.getApp();
         Menu.initialize();
         Menu.setTitle(Rez.Strings.trackChooserTitle);
-        var tracks = app.getTracks();
+        var tracks = app.getTracks() as [ Dictionary ];
         var num = tracks.size();
         var off = page*15;
         if ((num - off) <= 16) {
             // simple case, all fit in
             for(var i = page*15; i < num; i++) {
-                Menu.addItem(tracks[i]["title"], toSym(i - off));
+                Menu.addItem(
+                    tracks[i]["title"],
+                    toSym(i - off) );
             }
             return;
         }
 
-        for(var i = off; i < (15 + off); i++) {
-            Menu.addItem(tracks[i]["title"], toSym(i - off));
+        for(var i = off, iMax = 15 + off; i < iMax; i++) {
+            Menu.addItem(
+                tracks[i]["title"],
+                toSym(i - off) );
         }
         Menu.addItem(Rez.Strings.MORE, :MORE);
     }
 
-    function toSym(i) {
+    function toSym(i as Number) as Symbol {
         if (i == 0) {
             return :ITEM_0;
         } else if (i == 1) {
@@ -64,17 +70,17 @@ class TrackChooser extends Ui.Menu {
 }
 
 class TrackChooserDelegate extends Ui.MenuInputDelegate {
-    var app;
-    var page;
+    var app as gimporterApp;
+    var page as Number;
 
-    function initialize(p) {
+    function initialize(p as Number) {
         page = p;
 
         MenuInputDelegate.initialize();
-        app = App.getApp();
+        app = $.getApp();
     }
 
-    function toInt(sym) {
+    function toInt(sym as Symbol) as Number {
         if (sym.equals(:ITEM_0)) {
             return 0;
         } else if (sym.equals(:ITEM_1)) {
@@ -111,7 +117,7 @@ class TrackChooserDelegate extends Ui.MenuInputDelegate {
         return 0;
     }
 
-    function onMenuItem(item) {
+    function onMenuItem(item as Symbol) as Void {
         if (item.equals(:MORE)) {
             Ui.pushView(new TrackChooser(page + 1), new TrackChooserDelegate(page + 1), Ui.SLIDE_IMMEDIATE);
         } else {
