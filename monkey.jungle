@@ -1,25 +1,31 @@
 project.manifest = manifest-app.xml
-
 base.sourcePath = source
 
 gpsmap66.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap66.resourcePath)
 gpsmap67.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap67.resourcePath)
 oregon7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(oregon7xx.resourcePath)
 rino7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(rino7xx.resourcePath)
-montana7xx.resourcePath = resources-launcher-54x54;resources-nofit;$(montana7xx.resourcePath)
+montana7xx.resourcePath = resources-launcher-60x60;resources-nofit;$(montana7xx.resourcePath)
 
 approachs60.resourcePath = resources-launcher-40x33;resources-fit;$(approachs60.resourcePath)
-approachs62.resourcePath = resources-launcher-33x33;resources-fit;$(approachs62.resourcePath)
+approachs62.resourcePath = resources-launcher-35x35;resources-fit;$(approachs62.resourcePath)
+approachs7042mm.resourcePath = resources-launcher-60x60;resources-fit;$(approachs7042mm.resourcePath)
+approachs7047mm.resourcePath = resources-launcher-70x70;resources-fit;$(approachs7047mm.resourcePath)
 
-d2air.resourcePath = resources-launcher-54x54;resources-fit;$(d2air.resourcePath)
+d2air.resourcePath = resources-launcher-60x60;resources-fit;$(d2air.resourcePath)
+d2airx10.resourcePath = resources-launcher-70x70;resources-fit;$(d2airx10.resourcePath)
 d2charlie.resourcePath = resources-launcher-40x40;resources-fit;$(d2charlie.resourcePath)
 d2delta.resourcePath = resources-launcher-40x40;resources-fit;$(d2delta.resourcePath)
 d2deltapx.resourcePath = resources-launcher-40x40;resources-fit;$(d2deltapx.resourcePath)
 d2deltas.resourcePath = resources-launcher-40x40;resources-fit;$(d2deltas.resourcePath)
 descentmk1.resourcePath = resources-launcher-40x40;resources-fit;$(descentmk1.resourcePath)
 descentmk2.resourcePath = resources-launcher-40x40;resources-fit;$(descentmk2.resourcePath)
+descentmk2s.resourcePath = resources-launcher-40x40;resources-fit;$(descentmk2s.resourcePath)
+descentmk343mm.resourcePath = resources-launcher-60x60;resources-fit;$(descentmk343mm.resourcePath)
+descentmk351mm.resourcePath = resources-launcher-60x60;resources-fit;$(descentmk351mm.resourcePath)
 
 edge1040.resourcePath = resources-launcher-40x40;resources-fit;$(edge1040.resourcePath)
+edge1050.resourcePath = resources-launcher-68x68;resources-fit;$(edge1050.resourcePath)
 edge840.resourcePath = resources-launcher-35x35;resources-fit;$(edge840.resourcePath)
 edge540.resourcePath = resources-launcher-35x35;resources-fit;$(edge540.resourcePath)
 edge1030.resourcePath = resources-launcher-36x36;resources-fit;$(edge1030.resourcePath)
@@ -32,6 +38,7 @@ edge820.resourcePath = resources-launcher-35x35;resources-fit;$(edge820.resource
 edge_1000.resourcePath = resources-launcher-36x36;resources-fit;$(edge_1000.resourcePath)
 edge_520.resourcePath = resources-launcher-35x35;resources-fit;$(edge_520.resourcePath)
 edgeexplore.resourcePath = resources-launcher-36x36;resources-fit;$(edgeexplore.resourcePath)
+edgeexplore2.resourcePath = resources-launcher-36x36;resources-fit;$(edgeexplore2.resourcePath)
 
 fenix5.resourcePath = resources-launcher-40x40;resources-fit;$(fenix5.resourcePath)
 fenix5plus.resourcePath = resources-launcher-40x40;resources-fit;$(fenix5plus.resourcePath)
@@ -45,6 +52,7 @@ fr645m.resourcePath = resources-launcher-40x40;resources-fit;$(fr645m.resourcePa
 fr735xt.resourcePath = resources-launcher-40x40;resources-fit;$(fr735xt.resourcePath)
 fr935.resourcePath = resources-launcher-40x40;resources-fit;$(fr935.resourcePath)
 fr945.resourcePath = resources-launcher-40x40;resources-fit;$(fr945.resourcePath)
+fr945lte.resourcePath = resources-launcher-40x40;resources-fit;$(fr945lte.resourcePath)
 fr245.resourcePath = resources-launcher-40x40;resources-fit;$(fr245.resourcePath)
 fr245m.resourcePath = resources-launcher-40x40;resources-fit;$(fr245m.resourcePath)
 fenix6.resourcePath = resources-launcher-40x40;resources-fit;$(fenix6.resourcePath)
@@ -52,6 +60,18 @@ fenix6pro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix6pro.reso
 fenix6s.resourcePath = resources-launcher-40x40;resources-fit;$(fenix6s.resourcePath)
 fenix6spro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix6spro.resourcePath)
 fenix6xpro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix6xpro.resourcePath)
+fenix7.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7.resourcePath)
+fenix7pro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7pro.resourcePath)
+fenix7pronowifi.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7pronowifi.resourcePath)
+fenix7s.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7s.resourcePath)
+fenix7spro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7spro.resourcePath)
+fenix7x.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7x.resourcePath)
+fenix7xpro.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7xpro.resourcePath)
+fenix7xpronowifi.resourcePath = resources-launcher-40x40;resources-fit;$(fenix7xpronowifi.resourcePath)
+fenix843mm.resourcePath = resources-launcher-60x60;resources-fit;$(fenix843mm.resourcePath)
+fenix847mm.resourcePath = resources-launcher-65x65;resources-fit;$(fenix847mm.resourcePath)
+fenix8solar47mm.resourcePath = resources-launcher-40x40;resources-fit;$(fenix8solar47mm.resourcePath)
+fenix8solar51mm.resourcePath = resources-launcher-40x40;resources-fit;$(fenix8solar51mm.resourcePath)
 
 marqathlete.resourcePath = resources-launcher-40x40;resources-fit;$(marqathlete.resourcePath)
 marqdriver.resourcePath = resources-launcher-40x40;resources-fit;$(marqdriver.resourcePath)
@@ -62,3 +82,21 @@ marqcaptain.resourcePath = resources-launcher-40x40;resources-fit;$(marqcaptain.
 marqgolfer.resourcePath = resources-launcher-40x40;resources-fit;$(marqgolfer.resourcePath)
 
 enduro.resourcePath = resources-launcher-40x40;resources-fit;$(enduro.resourcePath)
+enduro3.resourcePath = resources-launcher-40x40;resources-fit;$(enduro3.resourcePath)
+
+epix2.resourcePath = resources-launcher-60x60;resources-fit;$(epix2.resourcePath)
+epix2pro42mm.resourcePath = resources-launcher-60x60;resources-fit;$(epix2pro42mm.resourcePath)
+epix2pro47mm.resourcePath = resources-launcher-60x60;resources-fit;$(epix2pro47mm.resourcePath)
+epix2pro51mm.resourcePath = resources-launcher-60x60;resources-fit;$(epix2pro51mm.resourcePath)
+
+fenixe.resourcePath = resources-launcher-60x60;resources-fit;$(fenixe.resourcePath)
+
+fr955.resourcePath = resources-launcher-40x40;resources-fit;$(fr955.resourcePath)
+fr965.resourcePath = resources-launcher-65x65;resources-fit;$(fr965.resourcePath)
+fr970.resourcePath = resources-launcher-65x65;resources-fit;$(fr970.resourcePath)
+
+gpsmap86.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap86.resourcePath)
+
+marq2.resourcePath = resources-launcher-60x60;resources-fit;$(marq2.resourcePath)
+marq2aviator.resourcePath = resources-launcher-60x60;resources-fit;$(marq2aviator.resourcePath)
+marqcommander.resourcePath = resources-launcher-40x40;resources-fit;$(marqcommander.resourcePath)

@@ -10,7 +10,7 @@ MONKEYDO = "$(SDK_HOME)/bin/monkeydo"
 
 .PHONY: build deploy buildall run package clean sim package-widget package-app
 
-all: build
+all: build monkey.jungle
 
 clean:
 	@rm -fr bin
@@ -78,3 +78,6 @@ package-app:
 package-widget: manifest-widget.xml
 	$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -f 'monkey-base.jungleinc;monkey-widget.jungleinc' \
 	-y $(PRIVATE_KEY) -r
+
+monkey.jungle: monkey-app.jungleinc monkey-base.jungleinc
+	cat monkey-app.jungleinc monkey-base.jungleinc > monkey.jungle
