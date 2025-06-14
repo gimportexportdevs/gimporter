@@ -12,6 +12,30 @@ function getApp() as gimporterApp {
     return App.getApp() as gimporterApp;
 }
 
+class PortRequestListener extends Comm.ConnectionListener {
+    function initialize() {
+        ConnectionListener.initialize();
+    }
+
+    function onComplete() {
+        System.println("Port request sent to Android app");
+    }
+
+    function onError() {
+        System.println("Failed to send port request");
+        // Fall back to default port
+        var app = getApp();
+        app.mServerPort = 22222;
+        if (app.mPendingTrackIndex != null) {
+            var index = app.mPendingTrackIndex;
+            app.mPendingTrackIndex = null;
+            app.loadTrackNumWithPort(index);
+        } else {
+            app.loadTrackListWithPort();
+        }
+    }
+}
+
 class gimporterApp extends App.AppBase {
     var tracks as Array? = null;
     var trackToStart as String?;
@@ -22,13 +46,14 @@ class gimporterApp extends App.AppBase {
     var exitTimer as TIME.Timer;
     var mIntent as System.Intent? = null;
     var mServerPort as Number = 22222;  // Default port, will be updated dynamically
+    var mPendingTrackIndex as Number? = null;  // Track index to load after port is received
 
     function initialize() {
         AppBase.initialize();
 
         mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
         System.println("GPXorFit = " + mGPXorFIT);
-        
+
         canLoadList = true;
         bluetoothTimer = new TIME.Timer();
         exitTimer = new TIME.Timer();
@@ -38,24 +63,10 @@ class gimporterApp extends App.AppBase {
     function onStart(state as Lang.Dictionary?) as Void {
         //loadTrackList();
         status = Rez.Strings.PressStart;
-        // Register to receive messages from Android app
-        Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
     }
 
     // onStop() is called when your application is exiting
     function onStop(state as Lang.Dictionary?) as Void {
-    }
-    
-    // Handle messages from the Android app
-    function onPhoneMessage(msg as Comm.PhoneAppMessage) as Void {
-        if (msg.data instanceof Number) {
-            // Received port number
-            mServerPort = msg.data as Number;
-            System.println("Received port from Android app: " + mServerPort);
-            // Update status to indicate we received the port
-            status = "Port: " + mServerPort;
-            Ui.requestUpdate();
-        }
     }
 
     // Return the initial view of your application here
@@ -69,6 +80,49 @@ class gimporterApp extends App.AppBase {
 
     function getTracks() as Array {
         return tracks;
+    }
+
+    function requestPortFromAndroid() as Void {
+        try {
+            status = "Requesting port...";
+            Ui.requestUpdate();
+
+            // Register to receive the response before sending
+            Comm.registerForPhoneAppMessages(method(:onPortReceived));
+
+            // Send request to Android app
+            var message = ["GET_PORT"];
+            Comm.transmit(message, null, new PortRequestListener());
+        } catch (ex) {
+            System.println("Error requesting port: " + ex.getErrorMessage());
+            // Fall back to default port
+            mServerPort = 22222;
+            if (mPendingTrackIndex != null) {
+                var index = mPendingTrackIndex;
+                mPendingTrackIndex = null;
+                loadTrackNumWithPort(index);
+            } else {
+                loadTrackListWithPort();
+            }
+        }
+    }
+
+    function onPortReceived(msg as Comm.PhoneAppMessage) as Void {
+        if (msg.data instanceof Number) {
+            // Received port number
+            mServerPort = msg.data as Number;
+            System.println("Received port from Android app: " + mServerPort);
+
+            // Check if we were loading a specific track or the track list
+            if (mPendingTrackIndex != null) {
+                var index = mPendingTrackIndex;
+                mPendingTrackIndex = null;
+                loadTrackNumWithPort(index);
+            } else {
+                // Loading track list
+                loadTrackListWithPort();
+            }
+        }
     }
 
     function loadTrackList() as Void {
@@ -94,14 +148,11 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        // if ((settings has :connectionInfo) || !(settings.connectionInfo has :bluetooth) || (settings.connectionInfo[:bluetooth].state != CONNECTION_STATE_CONNECTED)) {
-        //     bluetoothTimer.stop();
-        //     status = Rez.Strings.WaitingForBluetooth;
-        //     bluetoothTimer.start(method(:loadTrackList), 1000, false);
-        //     Ui.requestUpdate();
-        //     return;
-        // }
+        // Request port from Android app before making HTTP request
+        requestPortFromAndroid();
+    }
 
+    function loadTrackListWithPort() as Void {
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {
@@ -125,7 +176,6 @@ class gimporterApp extends App.AppBase {
         }
 
         Ui.requestUpdate();
-
     }
 
     function onReceiveTracks(responseCode as Number, data as Dictionary) as Void {
@@ -177,6 +227,14 @@ class gimporterApp extends App.AppBase {
     function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + tracks[index].toString());
 
+        // Store the index for later use
+        mPendingTrackIndex = index;
+
+        // Request port from Android app before downloading
+        requestPortFromAndroid();
+    }
+
+    function loadTrackNumWithPort(index as Number) as Void {
         // TODO: check hasKey
         var trackurl = (tracks[index] as Dictionary)["url"];
         trackToStart = (tracks[index] as Dictionary)["title"];
