@@ -21,6 +21,7 @@ class gimporterApp extends App.AppBase {
     var bluetoothTimer as TIME.Timer;
     var exitTimer as TIME.Timer;
     var mIntent as System.Intent? = null;
+    var mServerPort as Number = 22222;  // Default port, will be updated dynamically
 
     function initialize() {
         AppBase.initialize();
@@ -37,10 +38,24 @@ class gimporterApp extends App.AppBase {
     function onStart(state as Lang.Dictionary?) as Void {
         //loadTrackList();
         status = Rez.Strings.PressStart;
+        // Register to receive messages from Android app
+        Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
     }
 
     // onStop() is called when your application is exiting
     function onStop(state as Lang.Dictionary?) as Void {
+    }
+    
+    // Handle messages from the Android app
+    function onPhoneMessage(msg as Comm.PhoneAppMessage) as Void {
+        if (msg.data instanceof Number) {
+            // Received port number
+            mServerPort = msg.data as Number;
+            System.println("Received port from Android app: " + mServerPort);
+            // Update status to indicate we received the port
+            status = "Port: " + mServerPort;
+            Ui.requestUpdate();
+        }
     }
 
     // Return the initial view of your application here
@@ -90,8 +105,10 @@ class gimporterApp extends App.AppBase {
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
         try {
+            var url = "http://127.0.0.1:" + mServerPort + "/dir.json";
+            System.println("Requesting track list from: " + url);
             Comm.makeWebRequest(
-                "http://127.0.0.1:22222/dir.json",
+                url,
                 {
                     "type" => mGPXorFIT,
                     "short" => "1",
@@ -124,13 +141,6 @@ class gimporterApp extends App.AppBase {
 
         if (responseCode != 200) {
             System.println("data == null\nCode " + responseCode.toString() + "\n");
-            status = Rez.Strings.ConnectionFailed;
-            Ui.requestUpdate();
-            return;
-        }
-
-        if (!(data instanceof Toybox.Lang.Dictionary)) {
-            System.println("data is not Dict");
             status = Rez.Strings.ConnectionFailed;
             Ui.requestUpdate();
             return;
@@ -172,7 +182,7 @@ class gimporterApp extends App.AppBase {
         trackToStart = (tracks[index] as Dictionary)["title"];
 
         if ((trackurl.length() < 7) || (!trackurl.substring(0, 7).equals("http://"))) {
-            trackurl = "http://127.0.0.1:22222/" + trackurl;
+            trackurl = "http://127.0.0.1:" + mServerPort + "/" + trackurl;
         }
 
         status = Rez.Strings.Downloading;
@@ -241,12 +251,6 @@ class gimporterApp extends App.AppBase {
         }
         else if (responseCode != 200) {
             System.println("Code: " + responseCode);
-            status = Rez.Strings.DownloadFailed;
-            Ui.requestUpdate();
-            return;
-        }
-        else if (downloads == null) {
-            System.println("downloads == null");
             status = Rez.Strings.DownloadFailed;
             Ui.requestUpdate();
             return;
