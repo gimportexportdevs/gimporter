@@ -7,3 +7,4 @@
 .DS_Store
 /.settings
 /.id_rsa_garmin.der
+/.direnv
