@@ -47,6 +47,7 @@ class gimporterApp extends App.AppBase {
     var mIntent as System.Intent? = null;
     var mServerPort as Number = 22222;  // Default port, will be updated dynamically
     var mPendingTrackIndex as Number? = null;  // Track index to load after port is received
+    var mPortResponseTimer as TIME.Timer?;  // Timer for port response timeout
 
     function initialize() {
         AppBase.initialize();
@@ -83,6 +84,21 @@ class gimporterApp extends App.AppBase {
     }
 
     function requestPortFromAndroid() as Void {
+        // Check if phone is connected first
+        var settings = System.getDeviceSettings();
+        if (!settings.phoneConnected) {
+            System.println("Phone not connected, using default port");
+            mServerPort = 22222;
+            if (mPendingTrackIndex != null) {
+                var index = mPendingTrackIndex;
+                mPendingTrackIndex = null;
+                loadTrackNumWithPort(index);
+            } else {
+                loadTrackListWithPort();
+            }
+            return;
+        }
+        
         try {
             status = "Requesting port...";
             Ui.requestUpdate();
@@ -90,11 +106,21 @@ class gimporterApp extends App.AppBase {
             // Register to receive the response before sending
             Comm.registerForPhoneAppMessages(method(:onPortReceived));
 
+            // Start timeout timer - 1 second to wait for response
+            if (mPortResponseTimer == null) {
+                mPortResponseTimer = new TIME.Timer();
+            }
+            mPortResponseTimer.start(method(:onPortResponseTimeout), 1000, false);
+
             // Send request to Android app
             var message = ["GET_PORT"];
             Comm.transmit(message, null, new PortRequestListener());
         } catch (ex) {
             System.println("Error requesting port: " + ex.getErrorMessage());
+            // Stop timeout timer
+            if (mPortResponseTimer != null) {
+                mPortResponseTimer.stop();
+            }
             // Fall back to default port
             mServerPort = 22222;
             if (mPendingTrackIndex != null) {
@@ -108,6 +134,11 @@ class gimporterApp extends App.AppBase {
     }
 
     function onPortReceived(msg as Comm.PhoneAppMessage) as Void {
+        // Stop the timeout timer since we got a response
+        if (mPortResponseTimer != null) {
+            mPortResponseTimer.stop();
+        }
+        
         if (msg.data instanceof Number) {
             // Received port number
             mServerPort = msg.data as Number;
@@ -122,6 +153,20 @@ class gimporterApp extends App.AppBase {
                 // Loading track list
                 loadTrackListWithPort();
             }
+        }
+    }
+    
+    function onPortResponseTimeout() as Void {
+        System.println("Port response timeout, using default port");
+        // Timeout reached, use default port
+        mServerPort = 22222;
+        
+        if (mPendingTrackIndex != null) {
+            var index = mPendingTrackIndex;
+            mPendingTrackIndex = null;
+            loadTrackNumWithPort(index);
+        } else {
+            loadTrackListWithPort();
         }
     }
 
