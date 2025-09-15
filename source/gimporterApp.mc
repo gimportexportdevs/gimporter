@@ -103,18 +103,32 @@ class gimporterApp extends App.AppBase {
             status = "Requesting port...";
             Ui.requestUpdate();
 
-            // Register to receive the response before sending
-            Comm.registerForPhoneAppMessages(method(:onPortReceived));
+            // Check if phone app messaging is available
+            if (Comm has :registerForPhoneAppMessages) {
+                // Register to receive the response before sending
+                Comm.registerForPhoneAppMessages(method(:onPortReceived));
 
-            // Start timeout timer - 1 second to wait for response
-            if (mPortResponseTimer == null) {
-                mPortResponseTimer = new TIME.Timer();
+                // Start timeout timer - 1 second to wait for response
+                if (mPortResponseTimer == null) {
+                    mPortResponseTimer = new TIME.Timer();
+                }
+                mPortResponseTimer.start(method(:onPortResponseTimeout), 1000, false);
+
+                // Send request to Android app
+                var message = ["GET_PORT"];
+                Comm.transmit(message, null, new PortRequestListener());
+            } else {
+                // Device doesn't support phone app messaging, use default port
+                System.println("Device doesn't support phone app messaging, using default port");
+                mServerPort = 22222;
+                if (mPendingTrackIndex != null) {
+                    var index = mPendingTrackIndex;
+                    mPendingTrackIndex = null;
+                    loadTrackNumWithPort(index);
+                } else {
+                    loadTrackListWithPort();
+                }
             }
-            mPortResponseTimer.start(method(:onPortResponseTimeout), 1000, false);
-
-            // Send request to Android app
-            var message = ["GET_PORT"];
-            Comm.transmit(message, null, new PortRequestListener());
         } catch (ex) {
             System.println("Error requesting port: " + ex.getErrorMessage());
             // Stop timeout timer
