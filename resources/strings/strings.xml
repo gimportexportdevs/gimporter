@@ -12,6 +12,9 @@
     <string id="DownloadNotSupported">Device unsupported</string>
     <string id="DownloadComplete">Download complete</string>
     <string id="AlreadyDownloaded">Already Downloaded</string>
+    <string id="SimilarCoursesFound">Similar courses found</string>
+    <string id="SimilarCourseChooserTitle">Choose Course</string>
+    <string id="ImportFailed">Import failed</string>
     <string id="Downloading">Downloading</string>
     <string id="NoTracks">No Tracks found</string>
     <string id="MORE">[...]</string>
