@@ -9,7 +9,7 @@ Garmin Connect App to import GPX and FIT files
 * start the Android app https://github.com/gimportexportdevs/gexporter on your mobile device (where your Garmin Connect app runs)
 * build and start this Connect IQ app
 * select a course to download
-* start the course, or download more
+* start the course or download more
 * check that the FIT file was imported (e.g. check the courses folder or start an activity with the course)
 
 ## iOS
