@@ -27,11 +27,11 @@ jobs:
 
       - name: Build gimporter (default device)
         run: |
-          make build SDK_HOME=/connectiq-sdk PRIVATE_KEY=/tmp/developer_key.der
+          make build SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
 
       - name: Build for all devices
         run: |
-          make buildall SDK_HOME=/connectiq-sdk PRIVATE_KEY=/tmp/developer_key.der
+          make buildall SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
