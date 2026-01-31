@@ -17,6 +17,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install make
+        run: apt-get update && apt-get install -y make
+
       - name: Generate developer key
         run: |
           openssl genrsa -out /tmp/developer_key.pem 4096
