@@ -4,103 +4,66 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-gimporter is a Garmin ConnectIQ application written in MonkeyC that downloads GPX/FIT files from a companion Android app (gexporter) and imports them as courses on Garmin devices.
+gimporter is a Garmin ConnectIQ application written in MonkeyC that downloads GPX/FIT files from a companion Android app (gexporter) and imports them as courses on Garmin devices. Part of a larger gimporter/gexporter ecosystem.
 
 ## Build Commands
 
 ```bash
-# Build for default device (configured in properties.mk)
-make build
-
-# Build for all supported devices
-make buildall
-
-# Run in simulator
-make run
-
-# Run tests in simulator
-make test
-
-# Deploy to connected device
-make deploy
-
-# Create distribution packages (.iq files)
-make package
-
-# Clean build artifacts
-make clean
+make build           # Build for default device (set DEVICE in properties.mk)
+make buildall        # Build for all supported devices
+make run             # Build and run in simulator
+make test            # Run tests in simulator
+make deploy          # Deploy to connected device
+make package         # Create distribution .iq files (app + widget)
+make clean           # Remove build artifacts
 ```
+
+Build for a specific device: `make build DEVICE=fenix7`
 
 ## Development Setup
 
-1. **Configure SDK Path**: Edit `properties.mk` to set your ConnectIQ SDK path
-   - Default uses: `$(HOME)/Library/Application Support/Garmin/ConnectIQ/current-sdk.cfg`
-   - Override by setting `SDK_HOME` in properties.mk
-
-2. **Set Default Device**: Edit `DEVICE` in `properties.mk` (default: marqadventurer)
-
-3. **Configure Private Key**: Set `PRIVATE_KEY` path in properties.mk for signing builds
+Edit `properties.mk` to configure:
+- `DEVICE`: Target device (default: marqadventurer)
+- `SDK_HOME`: ConnectIQ SDK path (auto-detected from `~/Library/Application Support/Garmin/ConnectIQ/current-sdk.cfg`)
+- `PRIVATE_KEY`: Path to signing key (.der file)
+- `DEPLOY`: Device mount point for deployment
 
 ## Architecture
 
-### Core Components
+### Source Files
 
-- **gimporterApp.mc**: Main application class
-  - Handles Bluetooth/WiFi connectivity checks
-  - Manages HTTP communication with gexporter server
-  - Downloads and imports courses using PersistedContent API
-  - Receives port configuration from Android app via phone messages
+- **gimporterApp.mc**: Main application containing:
+  - `gimporterApp`: App class handling HTTP communication, course downloads, and PersistedContent imports
+  - `gimporterView`/`gimporterDelegate`: Main view and input handling
+  - `PortRequestListener`: Handles Android companion app communication
+  - `SimilarCourseChooser`/`SimilarCourseChooserDelegate`: Menu for selecting from similar course matches
 
-- **TrackChooser.mc**: Track selection UI
-  - Displays paginated list of available tracks
-  - Handles menu navigation for track selection
+- **TrackChooser.mc**: Paginated track list UI (15 items per page with "MORE" option)
 
 ### Communication Flow
 
-1. App connects to Android companion via Bluetooth
-2. Receives server port from Android app (default: 22222)
+1. App checks Bluetooth connection (WiFi must be off)
+2. Requests port from Android companion app via `Comm.transmit(["GET_PORT"], ...)`
 3. Fetches track list from `http://127.0.0.1:[port]/dir.json`
-4. Downloads selected track as GPX/FIT file
-5. Imports file using Garmin's PersistedContent API
-6. Launches course or makes it available in device's courses
+4. Downloads selected track as GPX or FIT (device-dependent, set via `Rez.Strings.GPXorFIT`)
+5. Imports via `PersistedContent` API, searches for matching course in courses/tracks/routes
+6. If exact match found, launches course; if similar matches found, presents selection menu
 
-### Resource Organization
+### Build Configuration
 
-- `resources/`: Base resources and strings
-- `resources-fit/`: Resources for devices supporting FIT files
-- `resources-nofit/`: Resources for devices without FIT support
-- `resources-launcher-*`: Device-specific launcher icons
-- `resources-rectangle-*/resources-round-*/resources-semiround-*`: Layout resources by screen shape
+The build uses split jungle include files:
+- `monkey-base.jungleinc`: Per-device resource paths (launcher icons, FIT/GPX support)
+- `monkey-app.jungleinc`: App manifest reference
+- `monkey-widget.jungleinc`: Widget manifest reference
 
-## Testing
+Resources are organized by:
+- `resources-fit/` vs `resources-nofit/`: Device FIT file support capability
+- `resources-launcher-NxN/`: Device-specific icon sizes
+- `resources-round-NxN/`, `resources-rectangle-NxN/`, `resources-semiround-NxN/`: Screen shape layouts
 
-```bash
-# Run tests for default device
-make test
+## Key Implementation Details
 
-# Tests create device-specific test PRG files in bin/
-# Example: bin/gimporter-marqadventurer-test.prg
-```
-
-## Key Configuration Files
-
-- **manifest-app.xml**: Application manifest with supported devices
-- **monkey.jungle**: Build configuration and resource paths
-- **properties.mk**: Developer-specific settings (SDK path, device, keys)
-
-## Device Support
-
-The app supports a wide range of Garmin devices including:
-- Edge series (520, 530, 820, 830, 1030, 1040, etc.)
-- Fenix series (5, 5s, 5x, 6, 6s, 6x and their variants)
-- Forerunner series (245, 645, 735XT, 935, 945)
-- MARQ series
-- Oregon/Montana/GPSMAP outdoor devices
-
-## Important Implementation Details
-
-- Uses PersistedContent API for course management (checks multiple content types: courses, tracks, routes)
-- Requires Bluetooth connection to Android device
-- WiFi must be disabled for proper operation
-- Course name matching handles various suffixes like "_course.fit"
-- Supports both GPX and FIT file formats (device-dependent)
+- Course name normalization strips `_course.fit`, `.fit`, `.gpx` suffixes for matching
+- Port request has 1-second timeout before falling back to default port 22222
+- Track pagination: 15 items per page, uses Symbol identifiers `:ITEM_0` through `:ITEM_15`
+- App exists in two variants: watch-app and widget (widget manifest auto-generated from app manifest)
