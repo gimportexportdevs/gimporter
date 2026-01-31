@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/matco/connectiq-tester:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate developer key
+        run: |
+          openssl genrsa -out /tmp/developer_key.pem 4096
+          openssl pkcs8 -topk8 -inform PEM -outform DER -in /tmp/developer_key.pem -out /tmp/developer_key.der -nocrypt
+
+      - name: Build gimporter (default device)
+        run: |
+          make build SDK_HOME=/connectiq-sdk PRIVATE_KEY=/tmp/developer_key.der
+
+      - name: Build for all devices
+        run: |
+          make buildall SDK_HOME=/connectiq-sdk PRIVATE_KEY=/tmp/developer_key.der
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gimporter-builds
+          path: bin/*.prg
+          retention-days: 7
