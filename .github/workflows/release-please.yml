@@ -46,5 +46,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apt-get install -y gh
+          apt-get install -y gh git
           gh release upload ${{ needs.release-please.outputs.tag_name }} bin/*.iq
