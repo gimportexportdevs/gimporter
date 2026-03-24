@@ -23,16 +23,14 @@ class PortRequestListener extends Comm.ConnectionListener {
 
     function onError() {
         System.println("Failed to send port request");
-        // Fall back to default port
         var app = getApp();
-        app.mServerPort = 22222;
-        if (app.mPendingTrackIndex != null) {
-            var index = app.mPendingTrackIndex;
-            app.mPendingTrackIndex = null;
-            app.loadTrackNumWithPort(index);
-        } else {
-            app.loadTrackListWithPort();
+        // Stop timeout timer to prevent double execution
+        if (app.mPortResponseTimer != null) {
+            app.mPortResponseTimer.stop();
         }
+        // Fall back to default port with delay to let BLE recover
+        app.mServerPort = 22222;
+        app.proceedAfterPortResolved();
     }
 }
 
@@ -49,6 +47,7 @@ class gimporterApp extends App.AppBase {
     var mPendingTrackIndex as Number? = null;  // Track index to load after port is received
     var mPortResponseTimer as TIME.Timer?;  // Timer for port response timeout
     var mSimilarCourses as Array? = null;  // Store similar courses for user selection
+    var mPortFallbackTimer as TIME.Timer?;  // Timer for delayed fallback after BLE disruption
 
     function initialize() {
         AppBase.initialize();
@@ -84,22 +83,45 @@ class gimporterApp extends App.AppBase {
         return tracks;
     }
 
+    // Helper to proceed after port is resolved (either received or fallback).
+    // Dispatches to the correct load function based on pending state.
+    function proceedAfterPortResolved() as Void {
+        if (mPendingTrackIndex != null) {
+            var index = mPendingTrackIndex;
+            mPendingTrackIndex = null;
+            loadTrackNumWithPort(index);
+        } else {
+            loadTrackListWithPort();
+        }
+    }
+
+    // Delayed fallback callback used after BLE disruption from Comm.transmit().
+    // Gives the BLE channel time to recover before making the HTTP request.
+    function onPortFallbackDelayed() as Void {
+        proceedAfterPortResolved();
+    }
+
+    // Fall back to default port with a short delay.
+    // The delay allows the BLE channel to recover after a failed Comm.transmit(),
+    // which can disrupt the BLE proxy on older devices/firmware.
+    function fallbackToDefaultPort() as Void {
+        mServerPort = 22222;
+        if (mPortFallbackTimer == null) {
+            mPortFallbackTimer = new TIME.Timer();
+        }
+        mPortFallbackTimer.start(method(:onPortFallbackDelayed), 500, false);
+    }
+
     function requestPortFromAndroid() as Void {
         // Check if phone is connected first
         var settings = System.getDeviceSettings();
         if (!settings.phoneConnected) {
             System.println("Phone not connected, using default port");
             mServerPort = 22222;
-            if (mPendingTrackIndex != null) {
-                var index = mPendingTrackIndex;
-                mPendingTrackIndex = null;
-                loadTrackNumWithPort(index);
-            } else {
-                loadTrackListWithPort();
-            }
+            proceedAfterPortResolved();
             return;
         }
-        
+
         try {
             status = "Requesting port...";
             Ui.requestUpdate();
@@ -122,13 +144,7 @@ class gimporterApp extends App.AppBase {
                 // Device doesn't support phone app messaging, use default port
                 System.println("Device doesn't support phone app messaging, using default port");
                 mServerPort = 22222;
-                if (mPendingTrackIndex != null) {
-                    var index = mPendingTrackIndex;
-                    mPendingTrackIndex = null;
-                    loadTrackNumWithPort(index);
-                } else {
-                    loadTrackListWithPort();
-                }
+                proceedAfterPortResolved();
             }
         } catch (ex) {
             System.println("Error requesting port: " + ex.getErrorMessage());
@@ -136,15 +152,8 @@ class gimporterApp extends App.AppBase {
             if (mPortResponseTimer != null) {
                 mPortResponseTimer.stop();
             }
-            // Fall back to default port
-            mServerPort = 22222;
-            if (mPendingTrackIndex != null) {
-                var index = mPendingTrackIndex;
-                mPendingTrackIndex = null;
-                loadTrackNumWithPort(index);
-            } else {
-                loadTrackListWithPort();
-            }
+            // Fall back to default port with delay to let BLE recover
+            fallbackToDefaultPort();
         }
     }
 
@@ -153,36 +162,24 @@ class gimporterApp extends App.AppBase {
         if (mPortResponseTimer != null) {
             mPortResponseTimer.stop();
         }
-        
+
         if (msg.data instanceof Number) {
             // Received port number
             mServerPort = msg.data as Number;
             System.println("Received port from Android app: " + mServerPort);
-
-            // Check if we were loading a specific track or the track list
-            if (mPendingTrackIndex != null) {
-                var index = mPendingTrackIndex;
-                mPendingTrackIndex = null;
-                loadTrackNumWithPort(index);
-            } else {
-                // Loading track list
-                loadTrackListWithPort();
-            }
+            proceedAfterPortResolved();
+        } else {
+            // Unexpected response type, fall back to default port
+            System.println("Unexpected port response type, using default port");
+            mServerPort = 22222;
+            proceedAfterPortResolved();
         }
     }
-    
+
     function onPortResponseTimeout() as Void {
         System.println("Port response timeout, using default port");
-        // Timeout reached, use default port
-        mServerPort = 22222;
-        
-        if (mPendingTrackIndex != null) {
-            var index = mPendingTrackIndex;
-            mPendingTrackIndex = null;
-            loadTrackNumWithPort(index);
-        } else {
-            loadTrackListWithPort();
-        }
+        // Timeout reached, fall back to default port with delay to let BLE recover
+        fallbackToDefaultPort();
     }
 
     function loadTrackList() as Void {
