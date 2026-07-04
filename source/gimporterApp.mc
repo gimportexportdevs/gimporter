@@ -186,6 +186,7 @@ class gimporterApp extends App.AppBase {
         tracks = null;
         trackToStart = null;
         mIntent = null;
+        mSimilarCourses = null;
 
         var settings = System.getDeviceSettings();
 
@@ -283,6 +284,8 @@ class gimporterApp extends App.AppBase {
 
     function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + tracks[index].toString());
+
+        mSimilarCourses = null;
 
         // Store the index for later use
         mPendingTrackIndex = index;
@@ -412,19 +415,20 @@ class gimporterApp extends App.AppBase {
             // }
 
             var ret = false;
+            mSimilarCourses = null;
 
             if (PC has :getAppCourses) {
                 System.println("Searching in App courses");
                 ret = searchCourse(PC.getAppCourses());
             }
-            if (PC has :getCourses) {
+            if ((ret == false) && (PC has :getCourses)) {
                 System.println("Searching in courses");
                 ret = searchCourse(PC.getCourses());
             }
 
             if ((ret == false) && (PC has :getAppTracks)) {
                 System.println("Searching in App tracks");
-                ret = searchCourse(PC.getTracks());
+                ret = searchCourse(PC.getAppTracks());
             }
             if ((ret == false) && (PC has :getTracks)) {
                 System.println("Searching in tracks");
@@ -529,6 +533,7 @@ class gimporterApp extends App.AppBase {
 
         if (startcourse != null) {
             System.println("Found exact course: " + startcourse.getName() + " asking for start");
+            mSimilarCourses = null;
             Ui.popView(Ui.SLIDE_IMMEDIATE);
             canLoadList = true;
             status = Rez.Strings.PressStart;
