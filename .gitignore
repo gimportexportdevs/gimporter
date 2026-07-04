@@ -8,3 +8,4 @@
 /.settings
 /.id_rsa_garmin.der
 /.direnv
+/properties.local.mk
