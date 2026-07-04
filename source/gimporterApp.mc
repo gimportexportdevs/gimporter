@@ -23,14 +23,8 @@ class PortRequestListener extends Comm.ConnectionListener {
 
     function onError() {
         System.println("Failed to send port request");
-        var app = getApp();
-        // Stop timeout timer to prevent double execution
-        if (app.mPortResponseTimer != null) {
-            app.mPortResponseTimer.stop();
-        }
         // Fall back to default port with delay to let BLE recover
-        app.mServerPort = 22222;
-        app.proceedAfterPortResolved();
+        getApp().fallbackToDefaultPort();
     }
 }
 
@@ -48,6 +42,8 @@ class gimporterApp extends App.AppBase {
     var mPortResponseTimer as TIME.Timer?;  // Timer for port response timeout
     var mSimilarCourses as Array? = null;  // Store similar courses for user selection
     var mPortFallbackTimer as TIME.Timer?;  // Timer for delayed fallback after BLE disruption
+    var mPortRequestPending as Boolean = false;  // One-shot gate: port resolution may dispatch only once per request
+    var mDownloadPending as Boolean = false;  // Download in flight; cleared when the user backs out
 
     function initialize() {
         AppBase.initialize();
@@ -83,9 +79,29 @@ class gimporterApp extends App.AppBase {
         return tracks;
     }
 
+    function stopPortTimers() as Void {
+        if (mPortResponseTimer != null) {
+            mPortResponseTimer.stop();
+        }
+        if (mPortFallbackTimer != null) {
+            mPortFallbackTimer.stop();
+        }
+    }
+
     // Helper to proceed after port is resolved (either received or fallback).
     // Dispatches to the correct load function based on pending state.
+    // One-shot per port request: the timeout fallback timer, a late reply and
+    // a transmit error can all arrive for the same request, so every caller
+    // funnels through the mPortRequestPending gate.
     function proceedAfterPortResolved() as Void {
+        if (!mPortRequestPending) {
+            return;
+        }
+        mPortRequestPending = false;
+        stopPortTimers();
+        if (Comm has :registerForPhoneAppMessages) {
+            Comm.registerForPhoneAppMessages(null);
+        }
         if (mPendingTrackIndex != null) {
             var index = mPendingTrackIndex;
             mPendingTrackIndex = null;
@@ -105,6 +121,12 @@ class gimporterApp extends App.AppBase {
     // The delay allows the BLE channel to recover after a failed Comm.transmit(),
     // which can disrupt the BLE proxy on older devices/firmware.
     function fallbackToDefaultPort() as Void {
+        if (!mPortRequestPending) {
+            return;
+        }
+        if (mPortResponseTimer != null) {
+            mPortResponseTimer.stop();
+        }
         mServerPort = 22222;
         if (mPortFallbackTimer == null) {
             mPortFallbackTimer = new TIME.Timer();
@@ -113,6 +135,8 @@ class gimporterApp extends App.AppBase {
     }
 
     function requestPortFromAndroid() as Void {
+        mPortRequestPending = true;
+
         // Check if phone is connected first
         var settings = System.getDeviceSettings();
         if (!settings.phoneConnected) {
@@ -158,6 +182,13 @@ class gimporterApp extends App.AppBase {
     }
 
     function onPortReceived(msg as Comm.PhoneAppMessage) as Void {
+        if (!mPortRequestPending) {
+            // Stray message (duplicate reply, queued leftover from an
+            // earlier request) - the listener also fires for those.
+            System.println("Ignoring phone message: no port request pending");
+            return;
+        }
+
         // Stop the timeout timer since we got a response
         if (mPortResponseTimer != null) {
             mPortResponseTimer.stop();
@@ -188,6 +219,7 @@ class gimporterApp extends App.AppBase {
         trackToStart = null;
         mIntent = null;
         mSimilarCourses = null;
+        mPendingTrackIndex = null;
 
         var settings = System.getDeviceSettings();
 
@@ -206,6 +238,9 @@ class gimporterApp extends App.AppBase {
             Ui.requestUpdate();
             return;
         }
+
+        // Block re-entry now - the port handshake below is asynchronous
+        canLoadList = false;
 
         // Request port from Android app before making HTTP request
         requestPortFromAndroid();
@@ -303,6 +338,7 @@ class gimporterApp extends App.AppBase {
         System.println("loadTrack: " + tracks[index].toString());
 
         mSimilarCourses = null;
+        canLoadList = false;
 
         // Store the index for later use
         mPendingTrackIndex = index;
@@ -312,7 +348,16 @@ class gimporterApp extends App.AppBase {
     }
 
     function loadTrackNumWithPort(index as Number) as Void {
-        // TODO: check hasKey
+        if (tracks == null || index >= tracks.size()) {
+            // The list was reloaded or cleared while the port handshake
+            // was in flight; the stored index no longer means anything.
+            System.println("track list changed, aborting load");
+            canLoadList = true;
+            status = Rez.Strings.NoTracks;
+            Ui.requestUpdate();
+            return;
+        }
+
         var trackurl = (tracks[index] as Dictionary)["url"];
         trackToStart = (tracks[index] as Dictionary)["title"];
 
@@ -330,6 +375,7 @@ class gimporterApp extends App.AppBase {
             Ui.SLIDE_IMMEDIATE );
         Ui.requestUpdate();
 
+        mDownloadPending = true;
         try {
             if (mGPXorFIT.equals("FIT")) {
                 System.println("Downloading FIT");
@@ -355,6 +401,8 @@ class gimporterApp extends App.AppBase {
                     method(:onReceiveTrack) );
             }
         } catch( ex ) {
+            mDownloadPending = false;
+            canLoadList = true;
             status = Rez.Strings.DownloadNotSupported;
         }
 
@@ -391,20 +439,31 @@ class gimporterApp extends App.AppBase {
     function onReceiveTrack(responseCode as Number, downloads as PC.Iterator?) as Void {
         System.println("onReceiveTrack");
 
+        if (!mDownloadPending) {
+            // The user backed out while the download was in flight; the
+            // view this callback wants to manipulate is no longer on top.
+            System.println("download cancelled, ignoring result");
+            return;
+        }
+        mDownloadPending = false;
+
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
             System.println("Bluetooth disconnected");
+            canLoadList = true;
             status = Rez.Strings.BluetoothDisconnected;
             Ui.requestUpdate();
             return;
         }
         else if (responseCode != 200) {
             System.println("Code: " + responseCode);
+            canLoadList = true;
             status = Rez.Strings.DownloadFailed;
             Ui.requestUpdate();
             return;
         }
         else if (downloads == null) {
             System.println("downloads == null");
+            canLoadList = true;
             status = Rez.Strings.DownloadFailed;
             Ui.requestUpdate();
             return;
@@ -426,6 +485,15 @@ class gimporterApp extends App.AppBase {
             }
 
             status = Rez.Strings.AlreadyDownloaded;
+
+            if (trackToStart == null) {
+                System.println("no track name to search for");
+                Ui.popView(Ui.SLIDE_IMMEDIATE);
+                canLoadList = true;
+                status = Rez.Strings.ImportFailed;
+                Ui.requestUpdate();
+                return;
+            }
 
             // if (trackToStart.length() > 4) {
             //     var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
@@ -615,10 +683,15 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
     }
 
     function onBack() as Boolean {
+        // Cancel whatever is in flight - callbacks check these flags and
+        // bail out instead of manipulating a view stack we just changed.
         app.canLoadList = true;
         app.status = Rez.Strings.PressStart;
-        // Clear any pending similar courses
         app.mSimilarCourses = null;
+        app.mPendingTrackIndex = null;
+        app.mDownloadPending = false;
+        app.mPortRequestPending = false;
+        app.stopPortTimers();
         Ui.requestUpdate();
         return false;
     }
