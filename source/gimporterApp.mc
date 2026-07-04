@@ -35,6 +35,24 @@ function symToItem(sym as Symbol) as Number {
     return 0;
 }
 
+// Map Communications error codes the user can act on to specific
+// messages; anything else falls through to the caller's default.
+function commErrorString(responseCode as Number, def as ResourceId) as ResourceId {
+    if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
+        return Rez.Strings.BluetoothDisconnected;
+    }
+    if (responseCode == Comm.STORAGE_FULL) {
+        return Rez.Strings.StorageFull;
+    }
+    if (responseCode == Comm.NETWORK_REQUEST_TIMED_OUT) {
+        return Rez.Strings.DownloadTimeout;
+    }
+    if (responseCode == Comm.NETWORK_RESPONSE_TOO_LARGE) {
+        return Rez.Strings.ResponseTooLarge;
+    }
+    return def;
+}
+
 class PortRequestListener extends Comm.ConnectionListener {
     function initialize() {
         ConnectionListener.initialize();
@@ -296,16 +314,9 @@ class gimporterApp extends App.AppBase {
         status = "";
         canLoadList = true;
 
-        if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
-            System.println("Bluetooth disconnected");
-            status = Rez.Strings.BluetoothDisconnected;
-            Ui.requestUpdate();
-            return;
-        }
-
         if (responseCode != 200) {
-            System.println("data == null\nCode " + responseCode.toString() + "\n");
-            status = Rez.Strings.ConnectionFailed;
+            System.println("Code " + responseCode.toString());
+            status = commErrorString(responseCode, Rez.Strings.ConnectionFailed);
             Ui.requestUpdate();
             return;
         }
@@ -467,17 +478,10 @@ class gimporterApp extends App.AppBase {
         }
         mDownloadPending = false;
 
-        if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
-            System.println("Bluetooth disconnected");
-            canLoadList = true;
-            status = Rez.Strings.BluetoothDisconnected;
-            Ui.requestUpdate();
-            return;
-        }
-        else if (responseCode != 200) {
+        if (responseCode != 200) {
             System.println("Code: " + responseCode);
             canLoadList = true;
-            status = Rez.Strings.DownloadFailed;
+            status = commErrorString(responseCode, Rez.Strings.DownloadFailed);
             Ui.requestUpdate();
             return;
         }
