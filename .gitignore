@@ -10,3 +10,5 @@
 /.direnv
 /properties.local.mk
 /result
+/.idea/
+/gimporter.iml
