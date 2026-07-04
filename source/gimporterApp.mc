@@ -197,7 +197,7 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        if ((settings has :connectionInfo) && (settings.connectionInfo has :wifi) && (settings.connectionInfo[:wifi].state == System.CONNECTION_STATE_CONNECTED)) {
+        if ((settings has :connectionInfo) && settings.connectionInfo.hasKey(:wifi) && (settings.connectionInfo[:wifi].state == System.CONNECTION_STATE_CONNECTED)) {
             bluetoothTimer.stop();
             status = Rez.Strings.SwitchOffWifi;
             bluetoothTimer.start(method(:loadTrackList), 1000, false);
