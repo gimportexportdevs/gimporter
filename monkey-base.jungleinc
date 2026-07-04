@@ -99,6 +99,8 @@ epix2pro51mm.resourcePath = resources-launcher-60x60;resources-fit;$(epix2pro51m
 fenixe.resourcePath = resources-launcher-60x60;resources-fit;$(fenixe.resourcePath)
 fr165.resourcePath = resources-launcher-54x54;resources-fit;$(fr165.resourcePath)
 fr165m.resourcePath = resources-launcher-54x54;resources-fit;$(fr165m.resourcePath)
+fr170.resourcePath = resources-launcher-54x54;resources-fit;$(fr170.resourcePath)
+fr170m.resourcePath = resources-launcher-54x54;resources-fit;$(fr170m.resourcePath)
 fr255.resourcePath = resources-launcher-40x40;resources-fit;$(fr255.resourcePath)
 fr255m.resourcePath = resources-launcher-40x40;resources-fit;$(fr255m.resourcePath)
 fr255s.resourcePath = resources-launcher-40x40;resources-fit;$(fr255s.resourcePath)
@@ -129,3 +131,7 @@ instincte45mm.resourcePath = resources-launcher-62x62;resources-fit;$(instincte4
 marq2.resourcePath = resources-launcher-60x60;resources-fit;$(marq2.resourcePath)
 marq2aviator.resourcePath = resources-launcher-60x60;resources-fit;$(marq2aviator.resourcePath)
 marqcommander.resourcePath = resources-launcher-40x40;resources-fit;$(marqcommander.resourcePath)
+
+venu441mm.resourcePath = resources-launcher-54x54;resources-fit;$(venu441mm.resourcePath)
+venu445mm.resourcePath = resources-launcher-65x65;resources-fit;$(venu445mm.resourcePath)
+vivoactive6.resourcePath = resources-launcher-54x54;resources-fit;$(vivoactive6.resourcePath)
