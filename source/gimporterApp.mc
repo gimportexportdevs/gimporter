@@ -12,6 +12,29 @@ function getApp() as gimporterApp {
     return App.getApp() as gimporterApp;
 }
 
+const DEFAULT_PORT = 22222;
+
+// Menu item identifiers indexed by position; shared by TrackChooser and
+// SimilarCourseChooser (the old WatchUi.Menu identifies items by Symbol
+// and caps at 16 items).
+const ITEM_SYMBOLS = [:ITEM_0, :ITEM_1, :ITEM_2, :ITEM_3,
+                      :ITEM_4, :ITEM_5, :ITEM_6, :ITEM_7,
+                      :ITEM_8, :ITEM_9, :ITEM_10, :ITEM_11,
+                      :ITEM_12, :ITEM_13, :ITEM_14, :ITEM_15] as Array<Symbol>;
+
+function itemToSym(i as Number) as Symbol {
+    return ITEM_SYMBOLS[i];
+}
+
+function symToItem(sym as Symbol) as Number {
+    for (var i = 0; i < ITEM_SYMBOLS.size(); i++) {
+        if (sym.equals(ITEM_SYMBOLS[i])) {
+            return i;
+        }
+    }
+    return 0;
+}
+
 class PortRequestListener extends Comm.ConnectionListener {
     function initialize() {
         ConnectionListener.initialize();
@@ -37,7 +60,7 @@ class gimporterApp extends App.AppBase {
     var bluetoothTimer as TIME.Timer;
     var exitTimer as TIME.Timer;
     var mIntent as System.Intent? = null;
-    var mServerPort as Number = 22222;  // Default port, will be updated dynamically
+    var mServerPort as Number = DEFAULT_PORT;  // Updated dynamically via the port handshake
     var mPendingTrackIndex as Number? = null;  // Track index to load after port is received
     var mPortResponseTimer as TIME.Timer?;  // Timer for port response timeout
     var mSimilarCourses as Array? = null;  // Store similar courses for user selection
@@ -58,7 +81,6 @@ class gimporterApp extends App.AppBase {
 
     // onStart() is called on application start up
     function onStart(state as Lang.Dictionary?) as Void {
-        //loadTrackList();
         status = Rez.Strings.PressStart;
     }
 
@@ -127,7 +149,7 @@ class gimporterApp extends App.AppBase {
         if (mPortResponseTimer != null) {
             mPortResponseTimer.stop();
         }
-        mServerPort = 22222;
+        mServerPort = DEFAULT_PORT;
         if (mPortFallbackTimer == null) {
             mPortFallbackTimer = new TIME.Timer();
         }
@@ -141,7 +163,7 @@ class gimporterApp extends App.AppBase {
         var settings = System.getDeviceSettings();
         if (!settings.phoneConnected) {
             System.println("Phone not connected, using default port");
-            mServerPort = 22222;
+            mServerPort = DEFAULT_PORT;
             proceedAfterPortResolved();
             return;
         }
@@ -167,7 +189,7 @@ class gimporterApp extends App.AppBase {
             } else {
                 // Device doesn't support phone app messaging, use default port
                 System.println("Device doesn't support phone app messaging, using default port");
-                mServerPort = 22222;
+                mServerPort = DEFAULT_PORT;
                 proceedAfterPortResolved();
             }
         } catch (ex) {
@@ -203,7 +225,7 @@ class gimporterApp extends App.AppBase {
         } else {
             // Unexpected response type, fall back to default port
             System.println("Unexpected port response type, using default port");
-            mServerPort = 22222;
+            mServerPort = DEFAULT_PORT;
             proceedAfterPortResolved();
         }
     }
@@ -260,8 +282,6 @@ class gimporterApp extends App.AppBase {
                     "longname" => "1" },
                 {
                     :method => Comm.HTTP_REQUEST_METHOD_GET,
-                    :headers => {
-                        "Content-Type" => Comm.REQUEST_CONTENT_TYPE_JSON },
                     :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON },
                 method(:onReceiveTracks) );
         } catch( ex ) {
@@ -495,16 +515,6 @@ class gimporterApp extends App.AppBase {
                 return;
             }
 
-            // if (trackToStart.length() > 4) {
-            //     var postfix = trackToStart.substring(trackToStart.length()-4, trackToStart.length()).toLower();
-            //     if (postfix.equals(".fit") || postfix.equals(".gpx")) {
-            //         trackToStart = trackToStart.substring(0, trackToStart.length()-4);
-            //     }
-            // }
-            // if (trackToStart.length() > 15) {
-            //     trackToStart = trackToStart.substring(0, 15);
-            // }
-
             var ret = false;
             mSimilarCourses = null;
 
@@ -720,50 +730,13 @@ class SimilarCourseChooser extends Ui.Menu {
         var courses = app.getSimilarCourses();
         
         if (courses != null) {
-            for(var i = 0; i < courses.size() && i < 16; i++) {
+            for(var i = 0; i < courses.size() && i < ITEM_SYMBOLS.size(); i++) {
                 var course = courses[i];
                 Menu.addItem(
                     course.getName(),
-                    toSym(i) );
+                    $.itemToSym(i) );
             }
         }
-    }
-
-    function toSym(i as Number) as Symbol {
-        if (i == 0) {
-            return :ITEM_0;
-        } else if (i == 1) {
-            return :ITEM_1;
-        } else if (i == 2) {
-            return :ITEM_2;
-        } else if (i == 3) {
-            return :ITEM_3;
-        } else if (i == 4) {
-            return :ITEM_4;
-        } else if (i == 5) {
-            return :ITEM_5;
-        } else if (i == 6) {
-            return :ITEM_6;
-        } else if (i == 7) {
-            return :ITEM_7;
-        } else if (i == 8) {
-            return :ITEM_8;
-        } else if (i == 9) {
-            return :ITEM_9;
-        } else if (i == 10) {
-            return :ITEM_10;
-        } else if (i == 11) {
-            return :ITEM_11;
-        } else if (i == 12) {
-            return :ITEM_12;
-        } else if (i == 13) {
-            return :ITEM_13;
-        } else if (i == 14) {
-            return :ITEM_14;
-        } else if (i == 15) {
-            return :ITEM_15;
-        }
-        return :ITEM_0;
     }
 }
 
@@ -775,45 +748,7 @@ class SimilarCourseChooserDelegate extends Ui.MenuInputDelegate {
         app = $.getApp();
     }
 
-    function toInt(sym as Symbol) as Number {
-        if (sym.equals(:ITEM_0)) {
-            return 0;
-        } else if (sym.equals(:ITEM_1)) {
-            return 1;
-        } else if (sym.equals(:ITEM_2)) {
-            return 2;
-        } else if (sym.equals(:ITEM_3)) {
-            return 3;
-        } else if (sym.equals(:ITEM_4)) {
-            return 4;
-        } else if (sym.equals(:ITEM_5)) {
-            return 5;
-        } else if (sym.equals(:ITEM_6)) {
-            return 6;
-        } else if (sym.equals(:ITEM_7)) {
-            return 7;
-        } else if (sym.equals(:ITEM_8)) {
-            return 8;
-        } else if (sym.equals(:ITEM_9)) {
-            return 9;
-        } else if (sym.equals(:ITEM_10)) {
-            return 10;
-        } else if (sym.equals(:ITEM_11)) {
-            return 11;
-        } else if (sym.equals(:ITEM_12)) {
-            return 12;
-        } else if (sym.equals(:ITEM_13)) {
-            return 13;
-        } else if (sym.equals(:ITEM_14)) {
-            return 14;
-        } else if (sym.equals(:ITEM_15)) {
-            return 15;
-        }
-        return 0;
-    }
-
     function onMenuItem(item as Symbol) as Void {
-        var index = toInt(item);
-        app.launchSimilarCourse(index);
+        app.launchSimilarCourse($.symToItem(item));
     }
 }
