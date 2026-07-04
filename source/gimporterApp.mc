@@ -163,9 +163,10 @@ class gimporterApp extends App.AppBase {
             mPortResponseTimer.stop();
         }
 
-        if (msg.data instanceof Number) {
+        var port = msg.data;
+        if (port instanceof Number && port > 0 && port <= 65535) {
             // Received port number
-            mServerPort = msg.data as Number;
+            mServerPort = port;
             System.println("Received port from Android app: " + mServerPort);
             proceedAfterPortResolved();
         } else {
@@ -254,8 +255,8 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        if (! data.hasKey("tracks")) {
-            System.println("data has no track key");
+        if (!(data instanceof Toybox.Lang.Dictionary) || !data.hasKey("tracks")) {
+            System.println("data is no Dictionary or has no track key");
             status = Rez.Strings.ConnectionFailed;
             Ui.requestUpdate();
             return;
@@ -263,19 +264,35 @@ class gimporterApp extends App.AppBase {
 
         tracks = data["tracks"];
 
-        if (tracks == null) {
-            System.println("tracks == null");
-            status = Rez.Strings.NoTracks;
-            Ui.requestUpdate();
-            return;
-        }
-
         if (!(tracks instanceof Toybox.Lang.Array)) {
             System.println("tracks != Array");
             status = Rez.Strings.NoTracks;
             tracks = null;
             Ui.requestUpdate();
             return;
+        }
+
+        if (tracks.size() == 0) {
+            System.println("tracks is empty");
+            status = Rez.Strings.NoTracks;
+            tracks = null;
+            Ui.requestUpdate();
+            return;
+        }
+
+        // Every element must be a Dictionary with String "url" and "title";
+        // TrackChooser and loadTrackNumWithPort rely on this shape unchecked.
+        for (var i = 0; i < tracks.size(); i++) {
+            var track = tracks[i];
+            if (!(track instanceof Toybox.Lang.Dictionary)
+                || !(track["url"] instanceof Toybox.Lang.String)
+                || !(track["title"] instanceof Toybox.Lang.String)) {
+                System.println("track " + i + " is malformed");
+                status = Rez.Strings.ConnectionFailed;
+                tracks = null;
+                Ui.requestUpdate();
+                return;
+            }
         }
 
         Ui.pushView(new TrackChooser(0), new TrackChooserDelegate(0), Ui.SLIDE_IMMEDIATE);
@@ -371,7 +388,7 @@ class gimporterApp extends App.AppBase {
         }
     }
 
-    function onReceiveTrack(responseCode as Number, downloads as PC.Iterator) as Void {
+    function onReceiveTrack(responseCode as Number, downloads as PC.Iterator?) as Void {
         System.println("onReceiveTrack");
 
         if (responseCode == Comm.BLE_CONNECTION_UNAVAILABLE) {
@@ -382,6 +399,12 @@ class gimporterApp extends App.AppBase {
         }
         else if (responseCode != 200) {
             System.println("Code: " + responseCode);
+            status = Rez.Strings.DownloadFailed;
+            Ui.requestUpdate();
+            return;
+        }
+        else if (downloads == null) {
+            System.println("downloads == null");
             status = Rez.Strings.DownloadFailed;
             Ui.requestUpdate();
             return;
