@@ -8,47 +8,61 @@ SIMULATOR = LD_LIBRARY_PATH="$(SDK_HOME)/bin" "$(SDK_HOME)/bin/connectiq"
 MONKEYC = "$(SDK_HOME)/bin/monkeyc"
 MONKEYDO = "$(SDK_HOME)/bin/monkeydo"
 
-.PHONY: build deploy buildall run package clean sim package-widget package-app
+.PHONY: all build buildall deploy run test sim package package-app package-widget clean
 
 all: build monkey.jungle
 
 clean:
-	@rm -fr bin
+	@rm -fr bin manifest-widget.xml
 	@find . -name '*~' -print0 | xargs -0 rm -f
 
 build: bin/$(APPNAME)-$(DEVICE).prg bin/$(APPNAME)-widget-$(DEVICE).prg
 
-bin/$(APPNAME)-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-app.xml
-	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE).prg \
-	-f 'monkey-base.jungleinc;monkey-app.jungleinc' \
-	-y $(PRIVATE_KEY) \
-	-d $(DEVICE)
+buildall: $(foreach device,$(SUPPORTED_DEVICES_LIST),\
+	bin/$(APPNAME)-$(device).prg bin/$(APPNAME)-widget-$(device).prg)
 
-bin/$(APPNAME)-widget-$(DEVICE).prg: $(SOURCES) $(RESFILES) manifest-widget.xml
-	$(MONKEYC) --warn --output bin/$(APPNAME)-widget-$(DEVICE).prg \
+# monkeyc drops scratch files with fixed names (internal-mir/, external-mir/,
+# gen/) into the --output directory, so concurrent compiles sharing bin/
+# corrupt each other. Each target therefore builds in its own work dir and
+# the artifacts are moved into place afterwards — this is what makes
+# `make -j buildall` safe.
+#
+# Both pattern rules match bin/$(APPNAME)-widget-<device>.prg; make
+# resolves the ambiguity by picking the rule with the shorter stem,
+# i.e. the widget rule.
+bin/$(APPNAME)-widget-%.prg: $(SOURCES) $(RESFILES) manifest-widget.xml
+	@mkdir -p bin/work/$(@F)
+	$(MONKEYC) --warn --output bin/work/$(@F)/$(@F) \
 	-f 'monkey-base.jungleinc;monkey-widget.jungleinc' \
 	-y $(PRIVATE_KEY) \
-	-d $(DEVICE)
+	-d $*
+	@mv bin/work/$(@F)/$(@F) $@
+	-@mv bin/work/$(@F)/$(@F).debug.xml bin/ 2>/dev/null
+	@rm -rf bin/work/$(@F)
 
-bin/$(APPNAME)-$(DEVICE)-test.prg: $(SOURCES) $(RESFILES)
-	$(MONKEYC) --warn --output bin/$(APPNAME)-$(DEVICE)-test.prg \
+bin/$(APPNAME)-%.prg: $(SOURCES) $(RESFILES) manifest-app.xml
+	@mkdir -p bin/work/$(@F)
+	$(MONKEYC) --warn --output bin/work/$(@F)/$(@F) \
+	-f 'monkey-base.jungleinc;monkey-app.jungleinc' \
+	-y $(PRIVATE_KEY) \
+	-d $*
+	@mv bin/work/$(@F)/$(@F) $@
+	-@mv bin/work/$(@F)/$(@F).debug.xml bin/ 2>/dev/null
+	@rm -rf bin/work/$(@F)
+
+bin/$(APPNAME)-$(DEVICE)-test.prg: $(SOURCES) $(RESFILES) manifest-app.xml
+	@mkdir -p bin/work/$(@F)
+	$(MONKEYC) --warn --output bin/work/$(@F)/$(@F) \
 	-f 'monkey-base.jungleinc;monkey-app.jungleinc' \
 	-y $(PRIVATE_KEY) \
 	--unit-test \
 	-d $(DEVICE)
-
-buildall:
-	@for device in $(SUPPORTED_DEVICES_LIST); do \
-		echo "-----"; \
-		echo "Building for" $$device; \
-		$(MONKEYC) --warn --output bin/$(APPNAME)-$$device.prg \
-			   -f 'monkey-base.jungleinc;monkey-app.jungleinc' \
-			   -y $(PRIVATE_KEY) \
-                           -d $$device; \
-	done
+	@mv bin/work/$(@F)/$(@F) $@
+	-@mv bin/work/$(@F)/$(@F).debug.xml bin/ 2>/dev/null
+	@rm -rf bin/work/$(@F)
 
 sim:
-	@pidof 'simulator*' &>/dev/null || ( $(SIMULATOR) & sleep 3 )
+	@pgrep -f "$(SDK_HOME)/bin/simulator" >/dev/null 2>&1 || ( $(SIMULATOR) & sleep 3 )
 
 run: sim bin/$(APPNAME)-$(DEVICE).prg
 	$(MONKEYDO) bin/$(APPNAME)-$(DEVICE).prg $(DEVICE) &
