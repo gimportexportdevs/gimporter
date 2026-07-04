@@ -9,8 +9,8 @@ gimporter is a Garmin ConnectIQ application written in MonkeyC that downloads GP
 ## Build Commands
 
 ```bash
-make build           # Build for default device (set DEVICE in properties.mk)
-make buildall        # Build for all supported devices
+make build           # Build app + widget for default device (set DEVICE in properties.mk)
+make -j buildall     # Build app + widget for all supported devices (parallel-safe)
 make run             # Build and run in simulator
 make test            # Run tests in simulator
 make deploy          # Deploy to connected device
@@ -22,10 +22,14 @@ Build for a specific device: `make build DEVICE=fenix7`
 
 ## Development Setup
 
-Edit `properties.mk` to configure:
+On Linux, `nix develop` provides the full compile toolchain: the ConnectIQ SDK (pinned in `flake.nix` as a fixed-output derivation, exposed through a writable shadow under `~/.cache/gimporter/` because monkeyc writes `default.jungle` next to its jar), a JDK, and `SDK_HOME` set. Device definitions are NOT in the flake — download them once with Garmin's SDK manager (requires developer login); monkeyc finds them in `~/.Garmin/ConnectIQ/Devices`.
+
+Without Nix, `properties.mk` auto-detects the SDK from the SDK manager's `current-sdk.cfg` (Linux: `~/.Garmin/ConnectIQ/`, macOS: `~/Library/Application Support/Garmin/ConnectIQ/`).
+
+Configuration (all overridable via environment or a gitignored `properties.local.mk`):
 - `DEVICE`: Target device (default: marqadventurer)
-- `SDK_HOME`: ConnectIQ SDK path (auto-detected from `~/Library/Application Support/Garmin/ConnectIQ/current-sdk.cfg`)
-- `PRIVATE_KEY`: Path to signing key (.der file)
+- `SDK_HOME`: ConnectIQ SDK path
+- `PRIVATE_KEY`: Path to signing key (.der file, default `~/.id_rsa_garmin.der`)
 - `DEPLOY`: Device mount point for deployment
 
 ## Architecture
@@ -50,6 +54,10 @@ Edit `properties.mk` to configure:
 6. If exact match found, launches course; if similar matches found, presents selection menu
 
 ### Build Configuration
+
+Builds run with monkeyc type checking (`-l 2`); keep new code warning-free.
+
+monkeyc drops fixed-name scratch files (`internal-mir/`, `external-mir/`, `gen/`) into its `--output` directory, so concurrent compiles sharing one directory corrupt each other. The Makefile therefore builds every target in its own `bin/work/<target>/` directory and moves artifacts into place — do not "simplify" this away, it is what makes `make -j buildall` safe.
 
 The build uses split jungle include files:
 - `monkey-base.jungleinc`: Per-device resource paths (launcher icons, FIT/GPX support)
