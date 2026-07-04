@@ -89,7 +89,7 @@ class gimporterApp extends App.AppBase {
     function initialize() {
         AppBase.initialize();
 
-        mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT);
+        mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT) as String;
         System.println("GPXorFit = " + mGPXorFIT);
 
         canLoadList = true;
@@ -111,11 +111,11 @@ class gimporterApp extends App.AppBase {
         return [ new gimporterView(), new gimporterDelegate() ];
     }
 
-    function getStatus() as String {
+    function getStatus() as String or ResourceId {
         return status;
     }
 
-    function getTracks() as Array {
+    function getTracks() as Array? {
         return tracks;
     }
 
@@ -271,7 +271,8 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        if ((settings has :connectionInfo) && settings.connectionInfo.hasKey(:wifi) && (settings.connectionInfo[:wifi].state == System.CONNECTION_STATE_CONNECTED)) {
+        var wifiInfo = (settings has :connectionInfo) ? settings.connectionInfo[:wifi] : null;
+        if (wifiInfo != null && wifiInfo.state == System.CONNECTION_STATE_CONNECTED) {
             bluetoothTimer.stop();
             status = Rez.Strings.SwitchOffWifi;
             bluetoothTimer.start(method(:loadTrackList), 1000, false);
@@ -304,13 +305,14 @@ class gimporterApp extends App.AppBase {
                 method(:onReceiveTracks) );
         } catch( ex ) {
             canLoadList = true;
-            status = ex.getErrorMessage();
+            var msg = ex.getErrorMessage();
+            status = (msg != null) ? msg : Rez.Strings.ConnectionFailed;
         }
 
         Ui.requestUpdate();
     }
 
-    function onReceiveTracks(responseCode as Number, data as Dictionary) as Void {
+    function onReceiveTracks(responseCode as Number, data as Dictionary or String or PC.Iterator or Null) as Void {
         status = "";
         canLoadList = true;
 
@@ -328,9 +330,9 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        tracks = data["tracks"];
+        var trackList = data["tracks"];
 
-        if (!(tracks instanceof Toybox.Lang.Array)) {
+        if (!(trackList instanceof Toybox.Lang.Array)) {
             System.println("tracks != Array");
             status = Rez.Strings.NoTracks;
             tracks = null;
@@ -338,7 +340,7 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        if (tracks.size() == 0) {
+        if (trackList.size() == 0) {
             System.println("tracks is empty");
             status = Rez.Strings.NoTracks;
             tracks = null;
@@ -348,8 +350,8 @@ class gimporterApp extends App.AppBase {
 
         // Every element must be a Dictionary with String "url" and "title";
         // TrackChooser and loadTrackNumWithPort rely on this shape unchecked.
-        for (var i = 0; i < tracks.size(); i++) {
-            var track = tracks[i];
+        for (var i = 0; i < trackList.size(); i++) {
+            var track = trackList[i];
             if (!(track instanceof Toybox.Lang.Dictionary)
                 || !(track["url"] instanceof Toybox.Lang.String)
                 || !(track["title"] instanceof Toybox.Lang.String)) {
@@ -361,12 +363,14 @@ class gimporterApp extends App.AppBase {
             }
         }
 
+        tracks = trackList;
+
         Ui.pushView(new TrackChooser(0), new TrackChooserDelegate(0), Ui.SLIDE_IMMEDIATE);
 
     }
 
     function loadTrackNum(index as Number) as Void {
-        System.println("loadTrack: " + tracks[index].toString());
+        System.println("loadTrack: " + index);
 
         mSimilarCourses = null;
         canLoadList = false;
@@ -379,7 +383,8 @@ class gimporterApp extends App.AppBase {
     }
 
     function loadTrackNumWithPort(index as Number) as Void {
-        if (tracks == null || index >= tracks.size()) {
+        var trackList = tracks;
+        if (trackList == null || index >= trackList.size()) {
             // The list was reloaded or cleared while the port handshake
             // was in flight; the stored index no longer means anything.
             System.println("track list changed, aborting load");
@@ -389,10 +394,11 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
-        var trackurl = (tracks[index] as Dictionary)["url"];
-        trackToStart = (tracks[index] as Dictionary)["title"];
+        var track = trackList[index] as Dictionary;
+        var trackurl = track["url"] as String;
+        trackToStart = track["title"] as String;
 
-        if ((trackurl.length() < 7) || (!trackurl.substring(0, 7).equals("http://"))) {
+        if ((trackurl.length() < 7) || (!"http://".equals(trackurl.substring(0, 7)))) {
             trackurl = "http://127.0.0.1:" + mServerPort + "/" + trackurl;
         }
 
@@ -454,13 +460,16 @@ class gimporterApp extends App.AppBase {
         }
     }
 
-    function getSimilarCourses() as Array {
+    function getSimilarCourses() as Array? {
         return mSimilarCourses;
     }
 
     function launchSimilarCourse(index as Number) as Void {
-        if (mSimilarCourses != null && index < mSimilarCourses.size()) {
-            var course = mSimilarCourses[index];
+        var courses = mSimilarCourses;
+        if (courses != null && index < courses.size()) {
+            // Courses, Tracks and Routes all provide getName()/toIntent();
+            // the cast is only to satisfy the type checker.
+            var course = courses[index] as PC.Course;
             System.println("Launching similar course: " + course.getName());
             exitInto(course.toIntent());
             mSimilarCourses = null;
@@ -571,12 +580,12 @@ class gimporterApp extends App.AppBase {
         var len = normalized.length();
         
         // Remove common course suffixes
-        if ((len > 11) && normalized.substring(len-11, len).equals("_course.fit")) {
-            normalized = normalized.substring(0, len-11);
-        } else if ((len > 4) && (normalized.substring(len-4, len).equals(".fit") || normalized.substring(len-4, len).equals(".gpx"))) {
-            normalized = normalized.substring(0, len-4);
+        if ((len > 11) && "_course.fit".equals(normalized.substring(len-11, len))) {
+            normalized = normalized.substring(0, len-11) as String;
+        } else if ((len > 4) && (".fit".equals(normalized.substring(len-4, len)) || ".gpx".equals(normalized.substring(len-4, len)))) {
+            normalized = normalized.substring(0, len-4) as String;
         }
-        
+
         return normalized;
     }
 
@@ -585,10 +594,14 @@ class gimporterApp extends App.AppBase {
         var startcourse = null;
         var partialMatches = [] as Array;
         var sclen = 0;
-        var normalizedTrackName = normalizeName(trackToStart);
+        var trackName = trackToStart;
+        if (trackName == null) {
+            return false;
+        }
+        var normalizedTrackName = normalizeName(trackName);
         var tlen = normalizedTrackName.length();
 
-        System.println("Searching for track: '" + trackToStart + "' (normalized: '" + normalizedTrackName + "')");
+        System.println("Searching for track: '" + trackName + "' (normalized: '" + normalizedTrackName + "')");
 
         // Search for the longest coursename matching ours
         while (cit != null) {
@@ -596,7 +609,7 @@ class gimporterApp extends App.AppBase {
             if (course == null) {
                 break;
             }
-            var coursename = course.getName();
+            var coursename = (course as PC.Course).getName();
             var normalizedCourseName = normalizeName(coursename);
             var clen = normalizedCourseName.length();
 
@@ -609,10 +622,10 @@ class gimporterApp extends App.AppBase {
             if (normalizedCourseName.equals(normalizedTrackName)) {
                 isExactMatch = true;
                 System.println("  Exact match found!");
-            } else if (clen <= tlen && normalizedTrackName.substring(0, clen).equals(normalizedCourseName)) {
+            } else if (clen <= tlen && normalizedCourseName.equals(normalizedTrackName.substring(0, clen))) {
                 isExactMatch = true;
                 System.println("  Prefix match found!");
-            } else if (clen > tlen && normalizedCourseName.substring(0, tlen).equals(normalizedTrackName)) {
+            } else if (clen > tlen && normalizedTrackName.equals(normalizedCourseName.substring(0, tlen))) {
                 // Track name is a prefix of course name
                 isPartialMatch = true;
                 System.println("  Partial match found (track is prefix of course)!");
@@ -652,7 +665,7 @@ class gimporterApp extends App.AppBase {
             mSimilarCourses = partialMatches;
             return true;
         } else {
-            System.println("No matching course found for: " + trackToStart);
+            System.println("No matching course found for: " + trackName);
         }
         return false;
     }
@@ -672,16 +685,19 @@ class gimporterView extends Ui.View {
 
     function onLayout(dc as GFX.Dc) as Void {
         setLayout(Rez.Layouts.MainLayout(dc));
-        st = findDrawableById("status");
-        ps = Ui.loadResource(Rez.Strings.PressStart);
+        st = findDrawableById("status") as Ui.Text?;
+        ps = Ui.loadResource(Rez.Strings.PressStart) as String;
     }
 
     function onUpdate(dc as GFX.Dc) as Void {
-        var status = app.getStatus();
-        if (status.equals("")) {
-            st.setText(ps);
-        } else {
-            st.setText(status);
+        var label = st;
+        if (label != null) {
+            var status = app.getStatus();
+            if (status.equals("")) {
+                label.setText(ps);
+            } else {
+                label.setText(status);
+            }
         }
 
         View.onUpdate(dc);
@@ -693,7 +709,7 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
 
     function initialize() {
         BehaviorDelegate.initialize();
-        app = App.getApp();
+        app = $.getApp();
     }
 
     function onBack() as Boolean {
@@ -735,7 +751,7 @@ class SimilarCourseChooser extends Ui.Menu {
         
         if (courses != null) {
             for(var i = 0; i < courses.size() && i < ITEM_SYMBOLS.size(); i++) {
-                var course = courses[i];
+                var course = courses[i] as PC.Course;
                 Menu.addItem(
                     course.getName(),
                     $.itemToSym(i) );

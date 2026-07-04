@@ -32,7 +32,7 @@ buildall: $(foreach device,$(SUPPORTED_DEVICES_LIST),\
 # i.e. the widget rule.
 bin/$(APPNAME)-widget-%.prg: $(SOURCES) $(RESFILES) manifest-widget.xml
 	@mkdir -p bin/work/$(@F)
-	$(MONKEYC) --warn --output bin/work/$(@F)/$(@F) \
+	$(MONKEYC) --warn -l 2 --output bin/work/$(@F)/$(@F) \
 	-f 'monkey-base.jungleinc;monkey-widget.jungleinc' \
 	-y $(PRIVATE_KEY) \
 	-d $*
@@ -42,7 +42,7 @@ bin/$(APPNAME)-widget-%.prg: $(SOURCES) $(RESFILES) manifest-widget.xml
 
 bin/$(APPNAME)-%.prg: $(SOURCES) $(RESFILES) manifest-app.xml
 	@mkdir -p bin/work/$(@F)
-	$(MONKEYC) --warn --output bin/work/$(@F)/$(@F) \
+	$(MONKEYC) --warn -l 2 --output bin/work/$(@F)/$(@F) \
 	-f 'monkey-base.jungleinc;monkey-app.jungleinc' \
 	-y $(PRIVATE_KEY) \
 	-d $*
@@ -52,7 +52,7 @@ bin/$(APPNAME)-%.prg: $(SOURCES) $(RESFILES) manifest-app.xml
 
 bin/$(APPNAME)-$(DEVICE)-test.prg: $(SOURCES) $(RESFILES) manifest-app.xml
 	@mkdir -p bin/work/$(@F)
-	$(MONKEYC) --warn --output bin/work/$(@F)/$(@F) \
+	$(MONKEYC) --warn -l 2 --output bin/work/$(@F)/$(@F) \
 	-f 'monkey-base.jungleinc;monkey-app.jungleinc' \
 	-y $(PRIVATE_KEY) \
 	--unit-test \
@@ -86,11 +86,11 @@ manifest-widget.xml: manifest-app.xml
 package: package-app package-widget
 
 package-app:
-	$(MONKEYC) --warn -e --output bin/$(APPNAME)-app.iq -f 'monkey-base.jungleinc;monkey-app.jungleinc' \
+	$(MONKEYC) --warn -l 2 -e --output bin/$(APPNAME)-app.iq -f 'monkey-base.jungleinc;monkey-app.jungleinc' \
 	-y $(PRIVATE_KEY) -r
 
 package-widget: manifest-widget.xml
-	$(MONKEYC) --warn -e --output bin/$(APPNAME)-widget.iq -f 'monkey-base.jungleinc;monkey-widget.jungleinc' \
+	$(MONKEYC) --warn -l 2 -e --output bin/$(APPNAME)-widget.iq -f 'monkey-base.jungleinc;monkey-widget.jungleinc' \
 	-y $(PRIVATE_KEY) -r
 
 monkey.jungle: monkey-app.jungleinc monkey-base.jungleinc

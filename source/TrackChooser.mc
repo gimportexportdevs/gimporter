@@ -17,7 +17,7 @@ class TrackChooser extends Ui.Menu {
             // simple case, all fit in
             for(var i = page*15; i < num; i++) {
                 Menu.addItem(
-                    tracks[i]["title"],
+                    tracks[i]["title"] as String,
                     $.itemToSym(i - off) );
             }
             return;
@@ -25,7 +25,7 @@ class TrackChooser extends Ui.Menu {
 
         for(var i = off, iMax = 15 + off; i < iMax; i++) {
             Menu.addItem(
-                tracks[i]["title"],
+                tracks[i]["title"] as String,
                 $.itemToSym(i - off) );
         }
         Menu.addItem(Rez.Strings.MORE, :MORE);
