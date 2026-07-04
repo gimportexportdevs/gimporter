@@ -8,21 +8,28 @@ gimporter is a Garmin ConnectIQ application written in MonkeyC that downloads GP
 
 ## Build Commands
 
+On Linux the Nix flake provides the full toolchain (ConnectIQ SDK + JDK, with
+`SDK_HOME` set), so prefix any `make` command with `nix develop -c`, or enter
+the shell once with `nix develop`:
+
 ```bash
-make build           # Build app + widget for default device (set DEVICE in properties.mk)
-make -j buildall     # Build app + widget for all supported devices (parallel-safe)
-make run             # Build and run in simulator
-make test            # Run tests in simulator
-make deploy          # Deploy to connected device
-make package         # Create distribution .iq files (app + widget)
-make clean           # Remove build artifacts
+nix develop -c make build        # Build app + widget for default device (set DEVICE in properties.mk)
+nix develop -c make -j buildall  # Build app + widget for all supported devices (parallel-safe)
+nix develop -c make run          # Build and run in simulator
+nix develop -c make test         # Run tests in simulator
+nix develop -c make deploy       # Deploy to connected device
+nix develop -c make package      # Create distribution .iq files (app + widget)
+make clean                       # Remove build artifacts (no toolchain needed)
 ```
 
-Build for a specific device: `make build DEVICE=fenix7`
+Build for a specific device: `nix develop -c make build DEVICE=fenix7`
+
+Without Nix, drop the `nix develop -c` prefix and rely on a locally installed
+SDK (see Development Setup below).
 
 ## Development Setup
 
-On Linux, `nix develop` provides the full compile toolchain: the ConnectIQ SDK (pinned in `flake.nix` as a fixed-output derivation, exposed through a writable shadow under `~/.cache/gimporter/` because monkeyc writes `default.jungle` next to its jar), a JDK, and `SDK_HOME` set. Device definitions are NOT in the flake — download them once with Garmin's SDK manager (requires developer login); monkeyc finds them in `~/.Garmin/ConnectIQ/Devices`.
+On Linux, `nix develop` provides the full compile toolchain: the ConnectIQ SDK (pinned in `flake.nix` as a fixed-output derivation, exposed through a writable shadow under `~/.cache/gimporter/` because monkeyc writes `default.jungle` next to its jar), a JDK, and `SDK_HOME` set. The first `nix develop` downloads the SDK (~200 MB) and populates the shadow, so it is slow; subsequent runs are cached. Device definitions are NOT in the flake — download them once with Garmin's SDK manager (requires developer login); monkeyc finds them in `~/.Garmin/ConnectIQ/Devices`.
 
 Without Nix, `properties.mk` auto-detects the SDK from the SDK manager's `current-sdk.cfg` (Linux: `~/.Garmin/ConnectIQ/`, macOS: `~/Library/Application Support/Garmin/ConnectIQ/`).
 
