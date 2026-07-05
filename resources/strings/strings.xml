@@ -1,7 +1,7 @@
 <strings>
-    <string id="AppName">gimporter</string>
-    <string id="AppVersion">V7.1.1</string> <!-- x-release-please-version -->
-    <string id="PressStart">Press Start/Menu</string>
+    <string id="AppName" scope="glance">gimporter</string>
+    <string id="AppVersion" scope="glance">V7.1.1</string> <!-- x-release-please-version -->
+    <string id="PressStart" scope="glance">Press Start/Menu</string>
     <string id="GettingTracklist">Getting track list</string>
     <string id="BluetoothDisconnected">Bluetooth disconnected</string>
     <string id="WaitingForBluetooth">Waiting for Bluetooth</string>

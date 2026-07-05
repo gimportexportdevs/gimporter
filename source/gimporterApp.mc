@@ -12,6 +12,9 @@ function getApp() as gimporterApp {
     return App.getApp() as gimporterApp;
 }
 
+// (:glance): referenced by gimporterApp's field initializers, which run in
+// the glance scope as well.
+(:glance)
 const DEFAULT_PORT = 22222;
 
 // Menu item identifiers indexed by position; shared by TrackChooser and
@@ -69,6 +72,11 @@ class PortRequestListener extends Comm.ConnectionListener {
     }
 }
 
+// (:glance) because the system instantiates the AppBase subclass inside the
+// glance scope. Methods referencing non-glance classes (views, chooser) stay
+// safe there because symbols resolve at call time, and those methods are
+// never called while running as a glance.
+(:glance)
 class gimporterApp extends App.AppBase {
     var tracks as Array? = null;
     var trackToStart as String?;
@@ -107,8 +115,17 @@ class gimporterApp extends App.AppBase {
     }
 
     // Return the initial view of your application here
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function getInitialView() as [ Ui.Views ] or [ Ui.Views, Ui.InputDelegates ] {
         return [ new gimporterView(), new gimporterDelegate() ];
+    }
+
+    // Glance shown in the widget carousel on glance-capable devices.
+    (:glance)
+    function getGlanceView() as [ Ui.GlanceView ] or [ Ui.GlanceView, Ui.GlanceViewDelegate ] or Null {
+        return [ new gimporterGlanceView() ];
     }
 
     function getStatus() as String or ResourceId {
@@ -174,6 +191,9 @@ class gimporterApp extends App.AppBase {
         mPortFallbackTimer.start(method(:onPortFallbackDelayed), 500, false);
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function requestPortFromAndroid() as Void {
         mPortRequestPending = true;
 
@@ -254,6 +274,9 @@ class gimporterApp extends App.AppBase {
         fallbackToDefaultPort();
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function loadTrackList() as Void {
         tracks = null;
         trackToStart = null;
@@ -287,6 +310,9 @@ class gimporterApp extends App.AppBase {
         requestPortFromAndroid();
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function loadTrackListWithPort() as Void {
         status = Rez.Strings.GettingTracklist;
         canLoadList = false;
@@ -312,6 +338,9 @@ class gimporterApp extends App.AppBase {
         Ui.requestUpdate();
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function onReceiveTracks(responseCode as Number, data as Dictionary or String or PC.Iterator or Null) as Void {
         status = "";
         canLoadList = true;
@@ -382,6 +411,9 @@ class gimporterApp extends App.AppBase {
         requestPortFromAndroid();
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function loadTrackNumWithPort(index as Number) as Void {
         var trackList = tracks;
         if (trackList == null || index >= trackList.size()) {
@@ -476,6 +508,9 @@ class gimporterApp extends App.AppBase {
         }
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function onReceiveTrack(responseCode as Number, downloads as PC.Iterator?) as Void {
         System.println("onReceiveTrack");
 

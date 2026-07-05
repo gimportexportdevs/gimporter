@@ -51,6 +51,16 @@ Configuration (all overridable via environment or a gitignored `properties.local
 
 - **TrackChooser.mc**: Paginated track list UI (15 items per page with "MORE" option)
 
+- **GlanceView.mc**: Glance shown in the widget carousel on glance-capable
+  devices (app name + FIT/GPX mode + version). The glance execution scope
+  only loads `(:glance)`-annotated code: `gimporterApp` itself carries the
+  annotation (the system instantiates it in glance scope), strings touched
+  on that path (`AppName`, `AppVersion`, `PressStart`, `GPXorFIT`) are
+  marked `scope="glance"`, and foreground-only methods use
+  `(:typecheck(disableGlanceCheck))`. On the 36 legacy devices without
+  glance support the compiler prints "annotation will be ignored" warnings
+  during `buildall` — these are expected no-ops, not regressions.
+
 ### Communication Flow
 
 1. App checks Bluetooth connection (WiFi must be off)
