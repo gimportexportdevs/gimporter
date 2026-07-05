@@ -2,10 +2,50 @@
   description = "Garmin ConnectIQ (MonkeyC) development environment for gimporter";
 
   inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+  # Pinned older nixpkgs for the headless simulator sandbox only: the
+  # ConnectIQ simulator links libwebkit2gtk-4.0.so.37 / libsoup-2.4, an ABI
+  # that has been dropped from current nixpkgs. 24.05 still ships it.
+  inputs.nixpkgs-2405.url = "github:NixOS/nixpkgs/nixos-24.05";
 
   outputs = inputs:
     let
       lib = inputs.nixpkgs.lib;
+
+      # monkey-run: our own steam-run-equivalent FHS sandbox, carrying exactly
+      # the GTK/webkit/GL libraries the x86_64 ConnectIQ simulator needs. All
+      # libs come from one nixpkgs generation so sonames (libgcrypt vs
+      # libgpg-error, etc.) stay mutually consistent — the mismatch that a
+      # mixed host + steam-run stack runs into. Software Mesa (llvmpipe) +
+      # lavapipe give it GL without a GPU. x86_64-linux only.
+      monkeyRunFor = system:
+        let
+          p = import inputs.nixpkgs-2405 {
+            inherit system;
+            config.permittedInsecurePackages = [ "libsoup-2.74.3" ];
+          };
+        in
+        p.buildFHSEnv {
+          name = "monkey-run";
+          targetPkgs = pkgs: with pkgs; [
+            # freetype linked -Bsymbolic: the simulator statically embeds an
+            # old freetype and EXPORTS 73 of its symbols (TT_New_Context et
+            # al.), which interpose the shared libfreetype's internal calls
+            # and crash it (SIGSEGV in TT_Load_Context) as soon as its GTK UI
+            # measures text under X11. -Bsymbolic binds libfreetype's
+            # intra-library calls locally, immune to the interposition.
+            (freetype.overrideAttrs (o: { NIX_LDFLAGS = "-Bsymbolic"; }))
+            glib gtk3 atk pango cairo gdk-pixbuf libpng fontconfig
+            expat zlib libxkbcommon libsecret libusb1 libjpeg8
+            stdenv.cc.cc.lib systemd
+            xorg.libX11 xorg.libXext xorg.libXxf86vm xorg.libSM xorg.libICE
+            webkitgtk libsoup            # 4.0 ABI + soup 2.4
+            libglvnd mesa                # software GL (llvmpipe)
+            xorg.xorgserver imagemagick xdotool xorg.xwininfo twm
+            glib-networking
+            dejavu_fonts
+          ];
+          runScript = "bash";
+        };
 
       sdkVersion = "9.2.0";
       sdkRelease = "connectiq-sdk-lin-${sdkVersion}-2026-06-09-92a1605b2";
@@ -61,19 +101,33 @@
     in
     {
       packages = forEachSupportedSystem ({ pkgs, system }:
-        lib.optionalAttrs (lib.hasSuffix "linux" system) rec {
+        lib.optionalAttrs (lib.hasSuffix "linux" system) (rec {
           connectiq-sdk = connectiqSdkFor pkgs;
           default = connectiq-sdk;
-        });
+        }
+        // lib.optionalAttrs (system == "x86_64-linux") {
+          monkey-run = monkeyRunFor system;
+        }));
 
       devShells = forEachSupportedSystem ({ pkgs, system }:
         let
           linux = lib.hasSuffix "linux" system;
           sdk = connectiqSdkFor pkgs;
+          # `make simcheck` driver: boots the compiled .prg in the headless
+          # simulator via the monkey-run sandbox. x86_64-linux only.
+          simcheck = pkgs.writeShellApplication {
+            name = "ciq-simcheck";
+            text = ''
+              : "''${SDK_HOME:?run via 'nix develop -c make simcheck'}"
+              exec ${monkeyRunFor system}/bin/monkey-run -c \
+                "SDK_HOME='$SDK_HOME' bash ${./nix/ciq-sim-run.sh} $*"
+            '';
+          };
         in
         {
           default = pkgs.mkShell ({
-            packages = [ pkgs.jdk ];
+            packages = [ pkgs.jdk ]
+              ++ lib.optionals (system == "x86_64-linux") [ simcheck ];
           }
           # On darwin the SDK comes from the SDK manager; properties.mk
           # falls back to its current-sdk.cfg when SDK_HOME is unset.

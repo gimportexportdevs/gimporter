@@ -8,7 +8,7 @@ SIMULATOR = LD_LIBRARY_PATH="$(SDK_HOME)/bin" "$(SDK_HOME)/bin/connectiq"
 MONKEYC = "$(SDK_HOME)/bin/monkeyc"
 MONKEYDO = "$(SDK_HOME)/bin/monkeydo"
 
-.PHONY: all build buildall deploy run test sim package package-app package-widget clean
+.PHONY: all build buildall deploy run test sim simcheck package package-app package-widget clean
 
 all: build monkey.jungle
 
@@ -69,6 +69,13 @@ run: sim bin/$(APPNAME)-$(DEVICE).prg
 
 test: sim bin/$(APPNAME)-$(DEVICE)-test.prg
 	$(MONKEYDO) bin/$(APPNAME)-$(DEVICE)-test.prg $(DEVICE) -t
+
+# Headless smoke test: boot the compiled app in the simulator (under the
+# monkey-run FHS sandbox), confirm it loads/runs on $(DEVICE), and save a
+# screenshot to bin/simcheck-$(DEVICE)/$(DEVICE).png. Needs the devShell's
+# ciq-simcheck: run as `nix develop -c make simcheck DEVICE=...`.
+simcheck: bin/$(APPNAME)-$(DEVICE).prg
+	ciq-simcheck bin/$(APPNAME)-$(DEVICE).prg $(DEVICE) bin/simcheck-$(DEVICE)
 
 $(DEPLOY)/$(APPNAME).prg: bin/$(APPNAME)-$(DEVICE).prg
 	@cp bin/$(APPNAME)-$(DEVICE).prg $(DEPLOY)/$(APPNAME).prg
