@@ -4,6 +4,8 @@ Garmin Connect App to import GPX and FIT files
 * ConnectIQ App: https://apps.garmin.com/en-US/apps/de11adc4-fdbb-40b5-86ac-7f93b47ea5bb
 * Android App: https://play.google.com/store/apps/details?id=org.surfsite.gexporter
 
+See the **[User Guide](docs/USER_GUIDE.md)** for step-by-step usage, with screenshots.
+
 
 ## HOWTO
 * start the Android app https://github.com/gimportexportdevs/gexporter on your mobile device (where your Garmin Connect app runs)
