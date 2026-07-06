@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.3.0](https://github.com/gimportexportdevs/gimporter/compare/v7.2.0...v7.3.0) (2026-07-06)
+
+
+### Features
+
+* translate UI into 21 major languages ([6c7c067](https://github.com/gimportexportdevs/gimporter/commit/6c7c0670133eb7ccf9238c87ac3a36420a1d6b12))
+
 ## [7.2.0](https://github.com/gimportexportdevs/gimporter/compare/v7.1.1...v7.2.0) (2026-07-06)
 
 
