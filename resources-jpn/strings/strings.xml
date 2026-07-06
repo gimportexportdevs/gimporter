@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">トラックリストを取得中</string>
+    <string id="BluetoothDisconnected">Bluetooth切断</string>
+    <string id="WaitingForBluetooth">Bluetoothを待機中</string>
+    <string id="SwitchOffWifi">Wi-Fiをオフにしてください</string>
+    <string id="ConnectionFailed">接続に失敗しました</string>
+    <string id="trackChooserTitle">トラックを選択</string>
+    <string id="DownloadFailed">ダウンロード失敗</string>
+    <string id="StorageFull">ストレージが満杯です</string>
+    <string id="DownloadTimeout">タイムアウト</string>
+    <string id="ResponseTooLarge">応答が大きすぎます</string>
+    <string id="DownloadNotSupported">非対応デバイス</string>
+    <string id="DownloadComplete">ダウンロード完了</string>
+    <string id="AlreadyDownloaded">ダウンロード済み</string>
+    <string id="SimilarCoursesFound">類似コースが見つかりました</string>
+    <string id="SimilarCourseChooserTitle">コースを選択</string>
+    <string id="ImportFailed">インポート失敗</string>
+    <string id="Downloading">ダウンロード中</string>
+    <string id="NoTracks">トラックが見つかりません</string>
+    <string id="trackStartTitle">Startを押して読み込み</string>
+    <string id="PressStart" scope="glance">Start/Menuを押す</string>
+</strings>

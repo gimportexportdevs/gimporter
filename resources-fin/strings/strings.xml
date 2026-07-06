@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Haetaan reittiluetteloa</string>
+    <string id="BluetoothDisconnected">Bluetooth katkaistu</string>
+    <string id="WaitingForBluetooth">Odotetaan Bluetoothia</string>
+    <string id="SwitchOffWifi">Kytke Wi-Fi pois</string>
+    <string id="ConnectionFailed">Yhteys epäonnistui</string>
+    <string id="trackChooserTitle">Valitse reitti</string>
+    <string id="DownloadFailed">Lataus epäonnistui</string>
+    <string id="StorageFull">Muisti täynnä</string>
+    <string id="DownloadTimeout">Aikakatkaisu</string>
+    <string id="ResponseTooLarge">Vastaus liian suuri</string>
+    <string id="DownloadNotSupported">Laitetta ei tueta</string>
+    <string id="DownloadComplete">Lataus valmis</string>
+    <string id="AlreadyDownloaded">Jo ladattu</string>
+    <string id="SimilarCoursesFound">Samankaltaisia reittejä löytyi</string>
+    <string id="SimilarCourseChooserTitle">Valitse reitti</string>
+    <string id="ImportFailed">Tuonti epäonnistui</string>
+    <string id="Downloading">Ladataan</string>
+    <string id="NoTracks">Reittejä ei löytynyt</string>
+    <string id="trackStartTitle">Käynnistä painamalla Start</string>
+    <string id="PressStart" scope="glance">Paina Start/Menu</string>
+</strings>

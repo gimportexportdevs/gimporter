@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Načítání seznamu tras</string>
+    <string id="BluetoothDisconnected">Bluetooth odpojeno</string>
+    <string id="WaitingForBluetooth">Čekání na Bluetooth</string>
+    <string id="SwitchOffWifi">Vypněte Wi-Fi</string>
+    <string id="ConnectionFailed">Připojení selhalo</string>
+    <string id="trackChooserTitle">Vybrat trasu</string>
+    <string id="DownloadFailed">Stahování selhalo</string>
+    <string id="StorageFull">Úložiště plné</string>
+    <string id="DownloadTimeout">Vypršel časový limit</string>
+    <string id="ResponseTooLarge">Odpověď příliš velká</string>
+    <string id="DownloadNotSupported">Zařízení nepodporováno</string>
+    <string id="DownloadComplete">Stahování dokončeno</string>
+    <string id="AlreadyDownloaded">Již staženo</string>
+    <string id="SimilarCoursesFound">Nalezeny podobné trasy</string>
+    <string id="SimilarCourseChooserTitle">Vyberte trasu</string>
+    <string id="ImportFailed">Import selhal</string>
+    <string id="Downloading">Stahování</string>
+    <string id="NoTracks">Žádné trasy nenalezeny</string>
+    <string id="trackStartTitle">Stiskněte Start pro spuštění</string>
+    <string id="PressStart" scope="glance">Stiskněte Start/Menu</string>
+</strings>

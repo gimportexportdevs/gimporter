@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Parkur listesi alınıyor</string>
+    <string id="BluetoothDisconnected">Bluetooth bağlantısı kesildi</string>
+    <string id="WaitingForBluetooth">Bluetooth bekleniyor</string>
+    <string id="SwitchOffWifi">Lütfen Wi-Fi'yi kapatın</string>
+    <string id="ConnectionFailed">Bağlantı başarısız</string>
+    <string id="trackChooserTitle">Parkur seç</string>
+    <string id="DownloadFailed">İndirme başarısız</string>
+    <string id="StorageFull">Depolama dolu</string>
+    <string id="DownloadTimeout">Zaman aşımı</string>
+    <string id="ResponseTooLarge">Yanıt çok büyük</string>
+    <string id="DownloadNotSupported">Cihaz desteklenmiyor</string>
+    <string id="DownloadComplete">İndirme tamamlandı</string>
+    <string id="AlreadyDownloaded">Zaten indirildi</string>
+    <string id="SimilarCoursesFound">Benzer parkurlar bulundu</string>
+    <string id="SimilarCourseChooserTitle">Parkur seçin</string>
+    <string id="ImportFailed">İçe aktarma başarısız</string>
+    <string id="Downloading">İndiriliyor</string>
+    <string id="NoTracks">Parkur bulunamadı</string>
+    <string id="trackStartTitle">Başlatmak için Start'a basın</string>
+    <string id="PressStart" scope="glance">Start/Menu'ye basın</string>
+</strings>

@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">正在获取轨迹列表</string>
+    <string id="BluetoothDisconnected">蓝牙已断开</string>
+    <string id="WaitingForBluetooth">正在等待蓝牙</string>
+    <string id="SwitchOffWifi">请关闭 Wi-Fi</string>
+    <string id="ConnectionFailed">连接失败</string>
+    <string id="trackChooserTitle">选择轨迹</string>
+    <string id="DownloadFailed">下载失败</string>
+    <string id="StorageFull">存储已满</string>
+    <string id="DownloadTimeout">请求超时</string>
+    <string id="ResponseTooLarge">响应过大</string>
+    <string id="DownloadNotSupported">设备不支持</string>
+    <string id="DownloadComplete">下载完成</string>
+    <string id="AlreadyDownloaded">已下载</string>
+    <string id="SimilarCoursesFound">找到相似路线</string>
+    <string id="SimilarCourseChooserTitle">选择路线</string>
+    <string id="ImportFailed">导入失败</string>
+    <string id="Downloading">正在下载</string>
+    <string id="NoTracks">未找到轨迹</string>
+    <string id="trackStartTitle">按 Start 加载轨迹</string>
+    <string id="PressStart" scope="glance">按 Start/Menu</string>
+</strings>

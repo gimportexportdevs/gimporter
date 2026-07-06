@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Nyomvonallista letöltése</string>
+    <string id="BluetoothDisconnected">Bluetooth leválasztva</string>
+    <string id="WaitingForBluetooth">Várakozás a Bluetooth-ra</string>
+    <string id="SwitchOffWifi">Kapcsolja ki a Wi-Fi-t</string>
+    <string id="ConnectionFailed">A kapcsolat sikertelen</string>
+    <string id="trackChooserTitle">Nyomvonal kiválasztása</string>
+    <string id="DownloadFailed">A letöltés sikertelen</string>
+    <string id="StorageFull">A tároló megtelt</string>
+    <string id="DownloadTimeout">Időtúllépés</string>
+    <string id="ResponseTooLarge">A válasz túl nagy</string>
+    <string id="DownloadNotSupported">Az eszköz nem támogatott</string>
+    <string id="DownloadComplete">A letöltés kész</string>
+    <string id="AlreadyDownloaded">Már letöltve</string>
+    <string id="SimilarCoursesFound">Hasonló pályák találhatók</string>
+    <string id="SimilarCourseChooserTitle">Válasszon pályát</string>
+    <string id="ImportFailed">Az importálás sikertelen</string>
+    <string id="Downloading">Letöltés</string>
+    <string id="NoTracks">Nincs nyomvonal</string>
+    <string id="trackStartTitle">Nyomja meg a Start gombot</string>
+    <string id="PressStart" scope="glance">Nyomja meg a Start/Menu-t</string>
+</strings>

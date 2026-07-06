@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Загрузка списка треков</string>
+    <string id="BluetoothDisconnected">Bluetooth отключён</string>
+    <string id="WaitingForBluetooth">Ожидание Bluetooth</string>
+    <string id="SwitchOffWifi">Отключите Wi-Fi</string>
+    <string id="ConnectionFailed">Ошибка подключения</string>
+    <string id="trackChooserTitle">Выбрать трек</string>
+    <string id="DownloadFailed">Ошибка загрузки</string>
+    <string id="StorageFull">Память заполнена</string>
+    <string id="DownloadTimeout">Время ожидания истекло</string>
+    <string id="ResponseTooLarge">Ответ слишком большой</string>
+    <string id="DownloadNotSupported">Устройство не поддерживается</string>
+    <string id="DownloadComplete">Загрузка завершена</string>
+    <string id="AlreadyDownloaded">Уже загружено</string>
+    <string id="SimilarCoursesFound">Найдены похожие маршруты</string>
+    <string id="SimilarCourseChooserTitle">Выберите маршрут</string>
+    <string id="ImportFailed">Ошибка импорта</string>
+    <string id="Downloading">Загрузка</string>
+    <string id="NoTracks">Треки не найдены</string>
+    <string id="trackStartTitle">Нажмите Start для запуска</string>
+    <string id="PressStart" scope="glance">Нажмите Start/Menu</string>
+</strings>

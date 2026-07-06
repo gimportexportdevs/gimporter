@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">트랙 목록 가져오는 중</string>
+    <string id="BluetoothDisconnected">블루투스 연결 끊김</string>
+    <string id="WaitingForBluetooth">블루투스 대기 중</string>
+    <string id="SwitchOffWifi">Wi-Fi를 꺼주세요</string>
+    <string id="ConnectionFailed">연결 실패</string>
+    <string id="trackChooserTitle">트랙 선택</string>
+    <string id="DownloadFailed">다운로드 실패</string>
+    <string id="StorageFull">저장 공간 부족</string>
+    <string id="DownloadTimeout">요청 시간 초과</string>
+    <string id="ResponseTooLarge">응답이 너무 큼</string>
+    <string id="DownloadNotSupported">지원되지 않는 기기</string>
+    <string id="DownloadComplete">다운로드 완료</string>
+    <string id="AlreadyDownloaded">이미 다운로드됨</string>
+    <string id="SimilarCoursesFound">유사한 코스 발견</string>
+    <string id="SimilarCourseChooserTitle">코스 선택</string>
+    <string id="ImportFailed">가져오기 실패</string>
+    <string id="Downloading">다운로드 중</string>
+    <string id="NoTracks">트랙을 찾을 수 없음</string>
+    <string id="trackStartTitle">Start를 눌러 불러오기</string>
+    <string id="PressStart" scope="glance">Start/Menu 누르기</string>
+</strings>

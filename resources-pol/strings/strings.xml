@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Pobieranie listy tras</string>
+    <string id="BluetoothDisconnected">Bluetooth rozłączony</string>
+    <string id="WaitingForBluetooth">Oczekiwanie na Bluetooth</string>
+    <string id="SwitchOffWifi">Wyłącz Wi-Fi</string>
+    <string id="ConnectionFailed">Połączenie nieudane</string>
+    <string id="trackChooserTitle">Wybierz trasę</string>
+    <string id="DownloadFailed">Pobieranie nieudane</string>
+    <string id="StorageFull">Pamięć pełna</string>
+    <string id="DownloadTimeout">Przekroczono limit czasu</string>
+    <string id="ResponseTooLarge">Odpowiedź zbyt duża</string>
+    <string id="DownloadNotSupported">Urządzenie nieobsługiwane</string>
+    <string id="DownloadComplete">Pobieranie zakończone</string>
+    <string id="AlreadyDownloaded">Już pobrano</string>
+    <string id="SimilarCoursesFound">Znaleziono podobne trasy</string>
+    <string id="SimilarCourseChooserTitle">Wybierz trasę</string>
+    <string id="ImportFailed">Import nieudany</string>
+    <string id="Downloading">Pobieranie</string>
+    <string id="NoTracks">Nie znaleziono tras</string>
+    <string id="trackStartTitle">Naciśnij Start, aby uruchomić</string>
+    <string id="PressStart" scope="glance">Naciśnij Start/Menu</string>
+</strings>

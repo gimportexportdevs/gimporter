@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Λήψη λίστας διαδρομών</string>
+    <string id="BluetoothDisconnected">Το Bluetooth αποσυνδέθηκε</string>
+    <string id="WaitingForBluetooth">Αναμονή για Bluetooth</string>
+    <string id="SwitchOffWifi">Απενεργοποιήστε το Wi-Fi</string>
+    <string id="ConnectionFailed">Η σύνδεση απέτυχε</string>
+    <string id="trackChooserTitle">Επιλογή διαδρομής</string>
+    <string id="DownloadFailed">Η λήψη απέτυχε</string>
+    <string id="StorageFull">Ο χώρος αποθήκευσης γέμισε</string>
+    <string id="DownloadTimeout">Λήξη χρόνου</string>
+    <string id="ResponseTooLarge">Πολύ μεγάλη απόκριση</string>
+    <string id="DownloadNotSupported">Η συσκευή δεν υποστηρίζεται</string>
+    <string id="DownloadComplete">Η λήψη ολοκληρώθηκε</string>
+    <string id="AlreadyDownloaded">Έχει ήδη ληφθεί</string>
+    <string id="SimilarCoursesFound">Βρέθηκαν παρόμοιες διαδρομές</string>
+    <string id="SimilarCourseChooserTitle">Επιλέξτε διαδρομή</string>
+    <string id="ImportFailed">Η εισαγωγή απέτυχε</string>
+    <string id="Downloading">Λήψη</string>
+    <string id="NoTracks">Δεν βρέθηκαν διαδρομές</string>
+    <string id="trackStartTitle">Πατήστε Start για εκκίνηση</string>
+    <string id="PressStart" scope="glance">Πατήστε Start/Menu</string>
+</strings>

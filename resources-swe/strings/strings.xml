@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Hämtar spårlista</string>
+    <string id="BluetoothDisconnected">Bluetooth frånkopplad</string>
+    <string id="WaitingForBluetooth">Väntar på Bluetooth</string>
+    <string id="SwitchOffWifi">Stäng av Wi-Fi</string>
+    <string id="ConnectionFailed">Anslutning misslyckades</string>
+    <string id="trackChooserTitle">Välj spår</string>
+    <string id="DownloadFailed">Nedladdning misslyckades</string>
+    <string id="StorageFull">Lagringen full</string>
+    <string id="DownloadTimeout">Tidsgräns överskreds</string>
+    <string id="ResponseTooLarge">Svaret för stort</string>
+    <string id="DownloadNotSupported">Enheten stöds inte</string>
+    <string id="DownloadComplete">Nedladdning klar</string>
+    <string id="AlreadyDownloaded">Redan nedladdad</string>
+    <string id="SimilarCoursesFound">Liknande banor hittades</string>
+    <string id="SimilarCourseChooserTitle">Välj bana</string>
+    <string id="ImportFailed">Import misslyckades</string>
+    <string id="Downloading">Laddar ner</string>
+    <string id="NoTracks">Inga spår hittades</string>
+    <string id="trackStartTitle">Tryck på Start för att ladda</string>
+    <string id="PressStart" scope="glance">Tryck på Start/Menu</string>
+</strings>

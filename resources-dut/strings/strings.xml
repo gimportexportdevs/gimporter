@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Tracklijst ophalen</string>
+    <string id="BluetoothDisconnected">Bluetooth verbroken</string>
+    <string id="WaitingForBluetooth">Wachten op Bluetooth</string>
+    <string id="SwitchOffWifi">Schakel wifi uit</string>
+    <string id="ConnectionFailed">Verbinding mislukt</string>
+    <string id="trackChooserTitle">Track kiezen</string>
+    <string id="DownloadFailed">Download mislukt</string>
+    <string id="StorageFull">Opslag vol</string>
+    <string id="DownloadTimeout">Time-out</string>
+    <string id="ResponseTooLarge">Antwoord te groot</string>
+    <string id="DownloadNotSupported">Toestel niet ondersteund</string>
+    <string id="DownloadComplete">Download voltooid</string>
+    <string id="AlreadyDownloaded">Al gedownload</string>
+    <string id="SimilarCoursesFound">Vergelijkbare routes gevonden</string>
+    <string id="SimilarCourseChooserTitle">Route kiezen</string>
+    <string id="ImportFailed">Import mislukt</string>
+    <string id="Downloading">Downloaden</string>
+    <string id="NoTracks">Geen tracks gevonden</string>
+    <string id="trackStartTitle">Druk op Start om te laden</string>
+    <string id="PressStart" scope="glance">Druk op Start/Menu</string>
+</strings>

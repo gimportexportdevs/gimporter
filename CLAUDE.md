@@ -14,7 +14,7 @@ the shell once with `nix develop`:
 
 ```bash
 nix develop -c make build        # Build app + widget for default device (set DEVICE in properties.mk)
-nix develop -c make -j buildall  # Build app + widget for all supported devices (parallel-safe)
+nix develop -c make buildall     # Build app + widget for all supported devices (self-parallelizes to CPU count; override with JOBS=N)
 nix develop -c make run          # Build and run in simulator
 nix develop -c make test         # Run tests in simulator
 nix develop -c make deploy       # Deploy to connected device
@@ -74,7 +74,9 @@ Configuration (all overridable via environment or a gitignored `properties.local
 
 Builds run with monkeyc type checking (`-l 2`); keep new code warning-free.
 
-monkeyc drops fixed-name scratch files (`internal-mir/`, `external-mir/`, `gen/`) into its `--output` directory, so concurrent compiles sharing one directory corrupt each other. The Makefile therefore builds every target in its own `bin/work/<target>/` directory and moves artifacts into place — do not "simplify" this away, it is what makes `make -j buildall` safe.
+monkeyc drops fixed-name scratch files (`internal-mir/`, `external-mir/`, `gen/`) into its `--output` directory, so concurrent compiles sharing one directory corrupt each other. The Makefile therefore builds every target in its own `bin/work/<target>/` directory and moves artifacts into place — do not "simplify" this away, it is what makes parallel `buildall` safe.
+
+`make buildall` self-parallelizes: it recurses into a sub-make with `-j` bounded to the CPU count (`NPROC`, detected via `nproc`/`sysctl`), so a bare `make buildall` builds ~120 devices × 2 variants without forking 240 compiles at once. Override the job count with `make buildall JOBS=N`. Do not pass a bare `make -j buildall` — the explicit `-j$(JOBS)` on the recursion keeps it bounded regardless, but the bare flag is now unnecessary.
 
 The build uses split jungle include files:
 - `monkey-base.jungleinc`: Per-device resource paths (launcher icons, FIT/GPX support)
@@ -85,6 +87,16 @@ Resources are organized by:
 - `resources-fit/` vs `resources-nofit/`: Device FIT file support capability
 - `resources-launcher-NxN/`: Device-specific icon sizes
 - `resources-round-NxN/`, `resources-rectangle-NxN/`, `resources-semiround-NxN/`: Screen shape layouts
+- `resources/strings/strings.xml`: English (default) UI strings; the language-neutral fallback for every locale
+- `resources-<lang>/strings/strings.xml`: Per-language translations (deu, fre, spa, ita, dut, por, pol, ces, rus, swe, fin, dan, nob, tur, gre, hun, ukr, zhs, zht, jpn, kor)
+
+### Localization
+
+UI strings are translated via `resources-<lang>/strings/` directories. The SDK's `default.jungle` already maps each `base.lang.<code> = resources-<code>`, so **no jungle edits are needed** — just add the folder. But every translated language MUST also be listed in `manifest-app.xml`'s `<iq:languages>` block, or monkeyc silently ignores the folder ("String resources will be ignored. Add the '<lang>' language…"). The widget manifest is `sed`-generated from the app manifest, so it inherits the languages automatically.
+
+Translation files only override the user-facing strings; brand/technical/symbol tokens (`AppName`, `AppVersion`, `GPXorFIT`, `MORE`) are intentionally left out and fall back to the default `resources`/device resources at runtime. `PressStart` mirrors the base `scope="glance"` attribute.
+
+Expected build warning: monkeyc emits `String id '<X>' undefined for language 'hun'` for those un-translated tokens. This hits only ONE language — whichever is first in the SDK `base.lang.*` declaration order among the included set (`hun` today; remove it and `nob` inherits the warning). It is **cosmetic**: the simulator confirms that with the device set to Hungarian, `AppName`/`AppVersion` render correctly and `Ui.loadResource(Rez.Strings.GPXorFIT)` returns `"FIT"` — the runtime resolver falls back to the default/device resources exactly as for every other locale. Treat these like the glance "annotation will be ignored" no-ops, not regressions.
 
 ## Key Implementation Details
 

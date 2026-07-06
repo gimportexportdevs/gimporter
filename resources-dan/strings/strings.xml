@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Henter sporliste</string>
+    <string id="BluetoothDisconnected">Bluetooth afbrudt</string>
+    <string id="WaitingForBluetooth">Venter på Bluetooth</string>
+    <string id="SwitchOffWifi">Sluk for Wi-Fi</string>
+    <string id="ConnectionFailed">Forbindelse mislykkedes</string>
+    <string id="trackChooserTitle">Vælg spor</string>
+    <string id="DownloadFailed">Download mislykkedes</string>
+    <string id="StorageFull">Lager fuldt</string>
+    <string id="DownloadTimeout">Tidsgrænse overskredet</string>
+    <string id="ResponseTooLarge">Svar for stort</string>
+    <string id="DownloadNotSupported">Enhed understøttes ikke</string>
+    <string id="DownloadComplete">Download fuldført</string>
+    <string id="AlreadyDownloaded">Allerede downloadet</string>
+    <string id="SimilarCoursesFound">Lignende ruter fundet</string>
+    <string id="SimilarCourseChooserTitle">Vælg rute</string>
+    <string id="ImportFailed">Import mislykkedes</string>
+    <string id="Downloading">Downloader</string>
+    <string id="NoTracks">Ingen spor fundet</string>
+    <string id="trackStartTitle">Tryk på Start for at indlæse</string>
+    <string id="PressStart" scope="glance">Tryk på Start/Menu</string>
+</strings>

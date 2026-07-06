@@ -1,0 +1,22 @@
+<strings>
+    <string id="GettingTracklist">Obteniendo lista de rutas</string>
+    <string id="BluetoothDisconnected">Bluetooth desconectado</string>
+    <string id="WaitingForBluetooth">Esperando Bluetooth</string>
+    <string id="SwitchOffWifi">Desactiva el Wifi</string>
+    <string id="ConnectionFailed">Error de conexión</string>
+    <string id="trackChooserTitle">Seleccionar ruta</string>
+    <string id="DownloadFailed">Error de descarga</string>
+    <string id="StorageFull">Almacenamiento lleno</string>
+    <string id="DownloadTimeout">Tiempo de espera agotado</string>
+    <string id="ResponseTooLarge">Respuesta demasiado grande</string>
+    <string id="DownloadNotSupported">Dispositivo no compatible</string>
+    <string id="DownloadComplete">Descarga completa</string>
+    <string id="AlreadyDownloaded">Ya descargado</string>
+    <string id="SimilarCoursesFound">Rutas similares encontradas</string>
+    <string id="SimilarCourseChooserTitle">Elegir ruta</string>
+    <string id="ImportFailed">Error de importación</string>
+    <string id="Downloading">Descargando</string>
+    <string id="NoTracks">No se encontraron rutas</string>
+    <string id="trackStartTitle">Pulsa Start para cargar</string>
+    <string id="PressStart" scope="glance">Pulsa Start/Menu</string>
+</strings>
