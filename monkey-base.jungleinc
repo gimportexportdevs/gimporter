@@ -79,6 +79,13 @@ fenix847mm.resourcePath = resources-launcher-65x65;resources-fit;$(fenix847mm.re
 fenix8pro47mm.resourcePath = resources-launcher-65x65;resources-fit;$(fenix8pro47mm.resourcePath)
 fenix8solar47mm.resourcePath = resources-launcher-40x40;resources-fit;$(fenix8solar47mm.resourcePath)
 fenix8solar51mm.resourcePath = resources-launcher-40x40;resources-fit;$(fenix8solar51mm.resourcePath)
+fenix943mm.resourcePath = resources-launcher-60x60;resources-fit;$(fenix943mm.resourcePath)
+fenix947mm.resourcePath = resources-launcher-65x65;resources-fit;$(fenix947mm.resourcePath)
+fenix9pro43mm.resourcePath = resources-launcher-60x60;resources-fit;$(fenix9pro43mm.resourcePath)
+fenix9pro47mm.resourcePath = resources-launcher-65x65;resources-fit;$(fenix9pro47mm.resourcePath)
+fenix9pro51mm.resourcePath = resources-launcher-65x65;resources-fit;$(fenix9pro51mm.resourcePath)
+fenix9prosolar47mm.resourcePath = resources-launcher-40x40;resources-fit;$(fenix9prosolar47mm.resourcePath)
+fenix9prosolar51mm.resourcePath = resources-launcher-40x40;resources-fit;$(fenix9prosolar51mm.resourcePath)
 
 marqathlete.resourcePath = resources-launcher-40x40;resources-fit;$(marqathlete.resourcePath)
 marqdriver.resourcePath = resources-launcher-40x40;resources-fit;$(marqdriver.resourcePath)
