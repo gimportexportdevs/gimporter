@@ -18,7 +18,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install make
-        run: apt-get update && apt-get install -y make
+        # procps: `make test` uses pgrep to find a running simulator
+        run: apt-get update && apt-get install -y make procps
 
       - name: Generate developer key
         run: |
@@ -28,6 +29,18 @@ jobs:
       - name: Build gimporter (default device)
         run: |
           make build SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
+
+      - name: Run unit tests
+        env:
+          # The image keeps the simulator's device and font files in
+          # /root/.Garmin; GitHub sets HOME to /github/home in containers.
+          HOME: /root
+        run: |
+          export DISPLAY=:1
+          Xvfb "$DISPLAY" -screen 0 1280x1024x24 &
+          /connectiq/bin/simulator > /dev/null 2>&1 &
+          sleep 5
+          make test DEVICE=fenix6 SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
 
       - name: Build for all devices
         run: |
