@@ -90,6 +90,17 @@ fi
 echo "== monkeydo output =="
 cat "$OUTDIR/monkeydo.log"
 
+# A passing suite still prints "errors=0", so the error grep below would
+# fail it; grade test runs by the summary line instead (as `make test` does).
+if [ "$MODE" = "test" ]; then
+  if grep -q "^PASSED" "$OUTDIR/monkeydo.log"; then
+    echo "PASS: unit tests passed on $DEVICE"
+    exit 0
+  fi
+  echo "FAIL: unit tests failed on $DEVICE" >&2
+  exit 1
+fi
+
 # A device/resource mismatch surfaces as a load error from monkeydo; a clean
 # boot leaves the app's own startup prints (and no error markers).
 if grep -qiE 'error|exception|could not|cannot|no such|unable to' "$OUTDIR/monkeydo.log"; then
