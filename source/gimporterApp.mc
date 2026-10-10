@@ -4,6 +4,7 @@ using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
 using Toybox.PersistedContent as PC;
+using Toybox.Position;
 using Toybox.Timer as TIME;
 using Toybox.System as System;
 using Toybox.Graphics as GFX;
@@ -54,6 +55,31 @@ function commErrorString(responseCode as Number, def as ResourceId) as ResourceI
         return Rez.Strings.ResponseTooLarge;
     }
     return def;
+}
+
+// A dir.json entry for a shared destination (rather than a course) carries
+// its coordinates as strings: JSON numbers would arrive as 32-bit floats.
+function isLocation(track as Dictionary) as Boolean {
+    return track["lat"] instanceof Toybox.Lang.String
+        && track["lon"] instanceof Toybox.Lang.String;
+}
+
+// The device may shorten long names, so a stored name that is a prefix
+// of ours also counts; an exact match wins.
+function findWaypoint(it as PC.Iterator, name as String) as PC.Waypoint? {
+    var prefixMatch = null;
+    var wp = it.next() as PC.Waypoint?;
+    while (wp != null) {
+        var wpName = wp.getName();
+        if (wpName.equals(name)) {
+            return wp;
+        }
+        if (wpName.length() > 0 && name.find(wpName) == 0) {
+            prefixMatch = wp;
+        }
+        wp = it.next() as PC.Waypoint?;
+    }
+    return prefixMatch;
 }
 
 class PortRequestListener extends Comm.ConnectionListener {
@@ -401,6 +427,17 @@ class gimporterApp extends App.AppBase {
     function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + index);
 
+        var trackList = tracks;
+        if (trackList != null && index < trackList.size()) {
+            var track = trackList[index] as Dictionary;
+            if ($.isLocation(track)) {
+                // A shared destination: nothing to download, the watch
+                // saves it as a location from its coordinates.
+                navigateToLocation(track);
+                return;
+            }
+        }
+
         mSimilarCourses = null;
         canLoadList = false;
 
@@ -476,6 +513,68 @@ class gimporterApp extends App.AppBase {
         }
 
         Ui.requestUpdate();
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function navigateToLocation(track as Dictionary) as Void {
+        var name = track["title"] as String;
+        var lat = (track["lat"] as String).toDouble();
+        var lon = (track["lon"] as String).toDouble();
+        System.println("Location: " + name + " " + lat + "," + lon);
+
+        canLoadList = true;
+        if (lat == null || lon == null || !(PC has :saveWaypoint)) {
+            status = Rez.Strings.DownloadNotSupported;
+            Ui.requestUpdate();
+            return;
+        }
+
+        // Drop an earlier copy, so the lookup below cannot pick a stale one.
+        removeAppWaypoints(name);
+        PC.saveWaypoint(
+            new Position.Location({ :latitude => lat as Double, :longitude => lon as Double, :format => :degrees }),
+            { :name => name });
+
+        // saveWaypoint() returns nothing; find the stored waypoint by name.
+        var waypoint = null;
+        if (PC has :getAppWaypoints) {
+            waypoint = $.findWaypoint(PC.getAppWaypoints(), name);
+        }
+        if (waypoint == null && (PC has :getWaypoints)) {
+            waypoint = $.findWaypoint(PC.getWaypoints(), name);
+        }
+        if (waypoint == null) {
+            System.println("saved waypoint not found");
+            status = Rez.Strings.ImportFailed;
+            Ui.requestUpdate();
+            return;
+        }
+
+        status = Rez.Strings.PressStart;
+        Ui.requestUpdate();
+        // The system asks which activity to navigate with.
+        exitInto(waypoint.toIntent());
+    }
+
+    function removeAppWaypoints(name as String) as Void {
+        if (!(PC has :getAppWaypoints)) {
+            return;
+        }
+        // Collect first: removing while iterating could skip entries.
+        var stale = [] as Array<PC.Waypoint>;
+        var it = PC.getAppWaypoints();
+        var wp = it.next() as PC.Waypoint?;
+        while (wp != null) {
+            if (wp.getName().equals(name) && (wp has :remove)) {
+                stale.add(wp);
+            }
+            wp = it.next() as PC.Waypoint?;
+        }
+        for (var i = 0; i < stale.size(); i++) {
+            stale[i].remove();
+        }
     }
 
     function doExitInto() as Void {
