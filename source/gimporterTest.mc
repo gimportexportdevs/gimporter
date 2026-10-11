@@ -47,8 +47,9 @@ module TestHelpers {
         return new FakeIterator(names) as Object as PC.Iterator;
     }
 
-    function nameOf(content as Object?) as String? {
-        return content == null ? null : (content as FakeContent).getName();
+    // "" for no content, so the result can go straight into assertEqual()
+    function nameOf(content as Object?) as String {
+        return content == null ? "" : (content as FakeContent).getName();
     }
 }
 
@@ -128,11 +129,11 @@ function testSearchCoursePartialMatches(logger as Test.Logger) as Boolean {
     app.trackToStart = "Tour.gpx";
     // course names longer than the track name are only "similar"
     Test.assert(app.searchCourse(TestHelpers.fakeIterator(["Tour de Wien", "Other", "Tourist"])));
-    var similar = app.getSimilarCourses();
+    var similar = app.getSimilarCourses() as Array<Object>;
     Test.assert(similar != null);
-    Test.assertEqual((similar as Array).size(), 2);
-    Test.assertEqual(TestHelpers.nameOf((similar as Array)[0]), "Tour de Wien");
-    Test.assertEqual(TestHelpers.nameOf((similar as Array)[1]), "Tourist");
+    Test.assertEqual(similar.size(), 2);
+    Test.assertEqual(TestHelpers.nameOf(similar[0]), "Tour de Wien");
+    Test.assertEqual(TestHelpers.nameOf(similar[1]), "Tourist");
     return true;
 }
 
@@ -145,5 +146,39 @@ function testSearchCourseNoMatch(logger as Test.Logger) as Boolean {
 
     app.trackToStart = null;
     Test.assert(!app.searchCourse(TestHelpers.fakeIterator(["Tour"])));
+    return true;
+}
+
+(:test)
+function testLocationMessage(logger as Test.Logger) as Boolean {
+    var now = 1790000000;
+    var msg = { "type" => "location", "title" => "Dom", "lat" => "48.2084000", "lon" => "16.3731000", "time" => now - 60 };
+    Test.assert($.isLocationMessage(msg, now));
+    // small clock difference between phone and watch
+    msg["time"] = now + 120;
+    Test.assert($.isLocationMessage(msg, now));
+    return true;
+}
+
+(:test)
+function testLocationMessageStale(logger as Test.Logger) as Boolean {
+    var now = 1790000000;
+    // shared yesterday, app opened only now
+    var msg = { "type" => "location", "title" => "Dom", "lat" => "48.2084000", "lon" => "16.3731000", "time" => now - 86400 };
+    Test.assert(!$.isLocationMessage(msg, now));
+    msg["time"] = now + 3600;
+    Test.assert(!$.isLocationMessage(msg, now));
+    return true;
+}
+
+(:test)
+function testLocationMessageMalformed(logger as Test.Logger) as Boolean {
+    var now = 1790000000;
+    Test.assert(!$.isLocationMessage(22222, now));  // a port reply
+    Test.assert(!$.isLocationMessage(null, now));
+    Test.assert(!$.isLocationMessage({ "type" => "other", "title" => "Dom", "lat" => "1.0", "lon" => "2.0", "time" => now }, now));
+    Test.assert(!$.isLocationMessage({ "type" => "location", "lat" => "1.0", "lon" => "2.0", "time" => now }, now));
+    Test.assert(!$.isLocationMessage({ "type" => "location", "title" => "Dom", "lat" => 1.0, "lon" => 2.0, "time" => now }, now));
+    Test.assert(!$.isLocationMessage({ "type" => "location", "title" => "Dom", "lat" => "1.0", "lon" => "2.0" }, now));
     return true;
 }

@@ -6,6 +6,7 @@ using Toybox.Communications as Comm;
 using Toybox.PersistedContent as PC;
 using Toybox.Position;
 using Toybox.Timer as TIME;
+using Toybox.Time;
 using Toybox.System as System;
 using Toybox.Graphics as GFX;
 
@@ -60,8 +61,33 @@ function commErrorString(responseCode as Number, def as ResourceId) as ResourceI
 // A dir.json entry for a shared destination (rather than a course) carries
 // its coordinates as strings: JSON numbers would arrive as 32-bit floats.
 function isLocation(track as Dictionary) as Boolean {
-    return track["lat"] instanceof Toybox.Lang.String
-        && track["lon"] instanceof Toybox.Lang.String;
+    if (track["lat"] instanceof Toybox.Lang.String && track["lon"] instanceof Toybox.Lang.String) {
+        return true;
+    }
+    return false;
+}
+
+// A location pushed by gexporter waits in the mailbox until the app runs;
+// one older than this is from an earlier share and must not start a
+// navigation out of the blue.
+const LOCATION_MESSAGE_MAX_AGE = 900;  // seconds
+// Tolerated clock difference between phone and watch.
+const LOCATION_MESSAGE_MAX_SKEW = 300;  // seconds
+
+// A phone message {"type": "location", "title", "lat", "lon", "time"} that
+// is recent enough to act on; "time" is the phone's epoch seconds.
+function isLocationMessage(data as Object?, now as Number) as Boolean {
+    if (!(data instanceof Dictionary)) {
+        return false;
+    }
+    var type = data["type"];
+    var time = data["time"];
+    if (!(type instanceof String) || !type.equals("location")
+        || !(data["title"] instanceof String) || !$.isLocation(data)
+        || !(time instanceof Number)) {
+        return false;
+    }
+    return (now - time) <= LOCATION_MESSAGE_MAX_AGE && (time - now) <= LOCATION_MESSAGE_MAX_SKEW;
 }
 
 // The device may shorten long names, so a stored name that is a prefix
@@ -145,7 +171,29 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function getInitialView() as [ Ui.Views ] or [ Ui.Views, Ui.InputDelegates ] {
+        // One listener for the whole run: it receives port replies and
+        // locations pushed by gexporter. Messages that arrived while the app
+        // was closed are delivered right away.
+        if (Comm has :registerForPhoneAppMessages) {
+            Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
+        }
         return [ new gimporterView(), new gimporterDelegate() ];
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function onPhoneMessage(msg as Comm.PhoneAppMessage) as Void {
+        var data = msg.data;
+        if (data instanceof Dictionary) {
+            if ($.isLocationMessage(data, Time.now().value())) {
+                navigateToLocation(data);
+            } else {
+                System.println("Ignoring stale or malformed phone message");
+            }
+            return;
+        }
+        onPortReceived(msg);
     }
 
     // Glance shown in the widget carousel on glance-capable devices.
@@ -182,9 +230,6 @@ class gimporterApp extends App.AppBase {
         }
         mPortRequestPending = false;
         stopPortTimers();
-        if (Comm has :registerForPhoneAppMessages) {
-            Comm.registerForPhoneAppMessages(null);
-        }
         if (mPendingTrackIndex != null) {
             var index = mPendingTrackIndex;
             mPendingTrackIndex = null;
@@ -236,11 +281,9 @@ class gimporterApp extends App.AppBase {
             status = "Requesting port...";
             Ui.requestUpdate();
 
-            // Check if phone app messaging is available
+            // Check if phone app messaging is available; the reply arrives
+            // through onPhoneMessage(), registered in getInitialView().
             if (Comm has :registerForPhoneAppMessages) {
-                // Register to receive the response before sending
-                Comm.registerForPhoneAppMessages(method(:onPortReceived));
-
                 // Start timeout timer - 1 second to wait for response
                 if (mPortResponseTimer == null) {
                     mPortResponseTimer = new TIME.Timer();
@@ -424,6 +467,9 @@ class gimporterApp extends App.AppBase {
 
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + index);
 
