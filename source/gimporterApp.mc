@@ -20,6 +20,45 @@ function getApp() as gimporterApp {
 (:glance)
 const DEFAULT_PORT = 22222;
 
+// What the app is doing; gimporterApp.mState. Every asynchronous callback
+// (timer, port reply, web response) checks that the app is still in the
+// state that started it and ignores itself otherwise, e.g. after the user
+// backed out or the phone pushed a track meanwhile.
+//
+//   IDLE ─start─> WAITING_FOR_PHONE ─> REQUESTING_PORT ─> LOADING_LIST ─> IDLE (track list shown)
+//   IDLE ─track chosen─> REQUESTING_PORT ─> DOWNLOADING
+//   phone pushes a track ─> DOWNLOADING
+//   DOWNLOADING ─> LEAVING (course found) | CHOOSING_SIMILAR | IDLE (failed)
+//   CHOOSING_SIMILAR ─> LEAVING
+//   location chosen or pushed ─> LEAVING
+//   back ─> IDLE (except while LEAVING)
+(:glance)
+enum {
+    STATE_IDLE,
+    STATE_WAITING_FOR_PHONE,  // no Bluetooth, or Wi-Fi on: retried every second
+    STATE_REQUESTING_PORT,  // asked gexporter for its port, then mPendingTrackIndex or the list
+    STATE_LOADING_LIST,  // dir.json requested
+    STATE_DOWNLOADING,  // a track is downloading
+    STATE_CHOOSING_SIMILAR,  // the downloaded track was not found, the user picks a similar one
+    STATE_LEAVING  // exitTo() scheduled
+}
+
+// The user can start loading the track list.
+function canLoadListIn(state as Number) as Boolean {
+    return state == STATE_IDLE || state == STATE_WAITING_FOR_PHONE;
+}
+
+// A track or location pushed by the phone is acted on: it supersedes
+// loading the list, but not an import the watch is already busy with.
+function acceptsPushIn(state as Number) as Boolean {
+    return state != STATE_DOWNLOADING && state != STATE_CHOOSING_SIMILAR && state != STATE_LEAVING;
+}
+
+// A track is being imported: the phone was told "importing".
+function isImportingIn(state as Number) as Boolean {
+    return state == STATE_DOWNLOADING || state == STATE_CHOOSING_SIMILAR;
+}
+
 // Menu item identifiers indexed by position; shared by TrackChooser and
 // SimilarCourseChooser (the old WatchUi.Menu identifies items by Symbol
 // and caps at 16 items).
@@ -243,22 +282,19 @@ class PortRequestListener extends Comm.ConnectionListener {
 // never called while running as a glance.
 (:glance)
 class gimporterApp extends App.AppBase {
+    var mState as Number = STATE_IDLE;  // see the STATE_* enum
     var tracks as Array? = null;
-    var trackToStart as String?;
-    var canLoadList as Boolean;
+    var trackToStart as String?;  // title of the track or location being imported
     var status as String or ResourceId = "";
     var mGPXorFIT as String;
     var bluetoothTimer as TIME.Timer;
     var exitTimer as TIME.Timer;
-    var mIntent as System.Intent? = null;
-    var mExiting as Boolean = false;  // exitTo() scheduled: the app is about to leave
+    var mIntent as System.Intent? = null;  // for exitTimer
     var mServerPort as Number = DEFAULT_PORT;  // Updated dynamically via the port handshake
-    var mPendingTrackIndex as Number? = null;  // Track index to load after port is received
+    var mPendingTrackIndex as Number? = null;  // REQUESTING_PORT: track to download, null for the list
     var mPortResponseTimer as TIME.Timer?;  // Timer for port response timeout
-    var mSimilarCourses as Array? = null;  // Store similar courses for user selection
+    var mSimilarCourses as Array? = null;  // CHOOSING_SIMILAR: the courses to choose from
     var mPortFallbackTimer as TIME.Timer?;  // Timer for delayed fallback after BLE disruption
-    var mPortRequestPending as Boolean = false;  // One-shot gate: port resolution may dispatch only once per request
-    var mDownloadPending as Boolean = false;  // Download in flight; cleared when the user backs out
     var mPushedTrack as Dictionary? = null;  // Track the phone asked for, started by mPushTimer
     var mPendingFingerprint as String? = null;  // gexporter's fingerprint of the track being imported
     var mPushTimer as TIME.Timer?;
@@ -269,7 +305,6 @@ class gimporterApp extends App.AppBase {
         mGPXorFIT = Ui.loadResource(Rez.Strings.GPXorFIT) as String;
         System.println("GPXorFit = " + mGPXorFIT);
 
-        canLoadList = true;
         bluetoothTimer = new TIME.Timer();
         exitTimer = new TIME.Timer();
     }
@@ -281,6 +316,71 @@ class gimporterApp extends App.AppBase {
 
     // onStop() is called when your application is exiting
     function onStop(state as Lang.Dictionary?) as Void {
+    }
+
+    // The only place mState changes. Stops the timers of the state left
+    // and tells the phone when an import begins or the app leaves.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function setState(state as Number) as Void {
+        var old = mState;
+        if (old == state) {
+            return;
+        }
+        System.println("state " + old + " -> " + state);
+        mState = state;
+        if (old == STATE_WAITING_FOR_PHONE) {
+            bluetoothTimer.stop();
+        }
+        if (old == STATE_REQUESTING_PORT) {
+            stopPortTimers();
+        }
+        if (old == STATE_CHOOSING_SIMILAR) {
+            mSimilarCourses = null;
+        }
+        if (state == STATE_DOWNLOADING) {
+            sendStatus("importing", trackToStart);
+        } else if (state == STATE_LEAVING) {
+            sendStatus("started", trackToStart);
+        }
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function canLoadList() as Boolean {
+        return $.canLoadListIn(mState);
+    }
+
+    // The import failed: show why and let the phone send again.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function failImport(message as String or ResourceId) as Void {
+        status = message;
+        setState(STATE_IDLE);
+        sendStatus("failed", trackToStart);
+        Ui.requestUpdate();
+    }
+
+    // The user backed out of whatever was in progress. Callbacks still in
+    // flight see the changed state and ignore themselves.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function cancel() as Void {
+        if (mState == STATE_LEAVING) {
+            return;
+        }
+        var wasImporting = $.isImportingIn(mState);
+        status = Rez.Strings.PressStart;
+        mPendingTrackIndex = null;
+        setState(STATE_IDLE);
+        if (wasImporting) {
+            sendStatus("ready", null);
+        }
+        Ui.requestUpdate();
     }
 
     // Return the initial view of your application here
@@ -316,9 +416,9 @@ class gimporterApp extends App.AppBase {
                 } else {
                     System.println("Ignoring stale or malformed delete request");
                 }
-            } else if (mExiting && (("track").equals(type) || ("location").equals(type))) {
-                // already leaving into a course or navigation
-                System.println("Leaving the app, ignoring " + type);
+            } else if (!$.acceptsPushIn(mState) && (("track").equals(type) || ("location").equals(type))) {
+                // importing, or already leaving into a course or navigation
+                System.println("Busy (state " + mState + "), ignoring " + type);
             } else if ($.isTrackMessage(data, now)) {
                 // Messages queued while the app was closed arrive from
                 // getInitialView(), before there is a view to push onto.
@@ -346,8 +446,8 @@ class gimporterApp extends App.AppBase {
         if (track == null) {
             return;
         }
-        if (mDownloadPending || mPortRequestPending || mExiting) {
-            System.println("Busy, ignoring pushed track");
+        if (!$.acceptsPushIn(mState)) {
+            System.println("Busy (state " + mState + "), ignoring pushed track");
             return;
         }
         mServerPort = track["port"] as Number;
@@ -495,14 +595,12 @@ class gimporterApp extends App.AppBase {
     // Helper to proceed after port is resolved (either received or fallback).
     // Dispatches to the correct load function based on pending state.
     // One-shot per port request: the timeout fallback timer, a late reply and
-    // a transmit error can all arrive for the same request, so every caller
-    // funnels through the mPortRequestPending gate.
+    // a transmit error can all arrive for the same request; the first one
+    // leaves REQUESTING_PORT, the others find the app in another state.
     function proceedAfterPortResolved() as Void {
-        if (!mPortRequestPending) {
+        if (mState != STATE_REQUESTING_PORT) {
             return;
         }
-        mPortRequestPending = false;
-        stopPortTimers();
         if (mPendingTrackIndex != null) {
             var index = mPendingTrackIndex;
             mPendingTrackIndex = null;
@@ -522,7 +620,7 @@ class gimporterApp extends App.AppBase {
     // The delay allows the BLE channel to recover after a failed Comm.transmit(),
     // which can disrupt the BLE proxy on older devices/firmware.
     function fallbackToDefaultPort() as Void {
-        if (!mPortRequestPending) {
+        if (mState != STATE_REQUESTING_PORT) {
             return;
         }
         if (mPortResponseTimer != null) {
@@ -539,7 +637,7 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function requestPortFromAndroid() as Void {
-        mPortRequestPending = true;
+        setState(STATE_REQUESTING_PORT);
 
         // Check if phone is connected first
         var settings = System.getDeviceSettings();
@@ -584,7 +682,7 @@ class gimporterApp extends App.AppBase {
     }
 
     function onPortReceived(msg as Comm.PhoneAppMessage) as Void {
-        if (!mPortRequestPending) {
+        if (mState != STATE_REQUESTING_PORT) {
             // Stray message (duplicate reply, queued leftover from an
             // earlier request) - the listener also fires for those.
             System.println("Ignoring phone message: no port request pending");
@@ -620,33 +718,25 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function loadTrackList() as Void {
+        if (!canLoadList()) {
+            return;
+        }
         tracks = null;
         trackToStart = null;
-        mIntent = null;
-        mSimilarCourses = null;
         mPendingTrackIndex = null;
 
         var settings = System.getDeviceSettings();
 
         if (! settings.phoneConnected) {
-            bluetoothTimer.stop();
-            status = Rez.Strings.WaitingForBluetooth;
-            bluetoothTimer.start(method(:loadTrackList), 1000, false);
-            Ui.requestUpdate();
+            waitForPhone(Rez.Strings.WaitingForBluetooth);
             return;
         }
 
         var wifiInfo = (settings has :connectionInfo) ? settings.connectionInfo[:wifi] : null;
         if (wifiInfo != null && wifiInfo.state == System.CONNECTION_STATE_CONNECTED) {
-            bluetoothTimer.stop();
-            status = Rez.Strings.SwitchOffWifi;
-            bluetoothTimer.start(method(:loadTrackList), 1000, false);
-            Ui.requestUpdate();
+            waitForPhone(Rez.Strings.SwitchOffWifi);
             return;
         }
-
-        // Block re-entry now - the port handshake below is asynchronous
-        canLoadList = false;
 
         // Request port from Android app before making HTTP request
         requestPortFromAndroid();
@@ -655,9 +745,20 @@ class gimporterApp extends App.AppBase {
     // disableGlanceCheck: references foreground-only symbols; never called in
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
+    function waitForPhone(message as ResourceId) as Void {
+        setState(STATE_WAITING_FOR_PHONE);
+        status = message;
+        bluetoothTimer.stop();
+        bluetoothTimer.start(method(:loadTrackList), 1000, false);
+        Ui.requestUpdate();
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function loadTrackListWithPort() as Void {
         status = Rez.Strings.GettingTracklist;
-        canLoadList = false;
+        setState(STATE_LOADING_LIST);
         try {
             var url = "http://127.0.0.1:" + mServerPort + "/dir.json";
             System.println("Requesting track list from: " + url);
@@ -675,7 +776,7 @@ class gimporterApp extends App.AppBase {
                     :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON },
                 method(:onReceiveTracks) );
         } catch( ex ) {
-            canLoadList = true;
+            setState(STATE_IDLE);
             var msg = ex.getErrorMessage();
             status = (msg != null) ? msg : Rez.Strings.ConnectionFailed;
         }
@@ -687,8 +788,13 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function onReceiveTracks(responseCode as Number, data as Dictionary or String or PC.Iterator or Null) as Void {
+        if (mState != STATE_LOADING_LIST) {
+            // backed out, or the phone pushed something meanwhile
+            System.println("track list no longer wanted, ignoring it");
+            return;
+        }
+        setState(STATE_IDLE);
         status = "";
-        canLoadList = true;
 
         if (responseCode != 200) {
             System.println("Code " + responseCode.toString());
@@ -748,6 +854,11 @@ class gimporterApp extends App.AppBase {
     (:typecheck(disableGlanceCheck))
     function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + index);
+        if (mState != STATE_IDLE) {
+            // e.g. a pushed track is downloading under the track list
+            System.println("Busy (state " + mState + "), ignoring the choice");
+            return;
+        }
 
         var trackList = tracks;
         if (trackList != null && index < trackList.size()) {
@@ -759,9 +870,6 @@ class gimporterApp extends App.AppBase {
                 return;
             }
         }
-
-        mSimilarCourses = null;
-        canLoadList = false;
 
         // Store the index for later use
         mPendingTrackIndex = index;
@@ -779,7 +887,7 @@ class gimporterApp extends App.AppBase {
             // The list was reloaded or cleared while the port handshake
             // was in flight; the stored index no longer means anything.
             System.println("track list changed, aborting load");
-            canLoadList = true;
+            setState(STATE_IDLE);
             status = Rez.Strings.NoTracks;
             Ui.requestUpdate();
             return;
@@ -806,7 +914,6 @@ class gimporterApp extends App.AppBase {
         }
 
         status = Rez.Strings.Downloading;
-        canLoadList = false;
         System.println("GPXorFIT: " + mGPXorFIT);
 
         Ui.pushView(
@@ -815,8 +922,7 @@ class gimporterApp extends App.AppBase {
             Ui.SLIDE_IMMEDIATE );
         Ui.requestUpdate();
 
-        mDownloadPending = true;
-        sendStatus("importing", title);
+        setState(STATE_DOWNLOADING);
         try {
             if (mGPXorFIT.equals("FIT")) {
                 System.println("Downloading FIT");
@@ -842,10 +948,7 @@ class gimporterApp extends App.AppBase {
                     method(:onReceiveTrack) );
             }
         } catch( ex ) {
-            mDownloadPending = false;
-            canLoadList = true;
-            status = Rez.Strings.DownloadNotSupported;
-            sendStatus("failed", title);
+            failImport(Rez.Strings.DownloadNotSupported);
         }
 
         Ui.requestUpdate();
@@ -860,7 +963,8 @@ class gimporterApp extends App.AppBase {
         var lon = (track["lon"] as String).toDouble();
         System.println("Location: " + name + " " + lat + "," + lon);
 
-        canLoadList = true;
+        // a pushed location supersedes loading the track list
+        setState(STATE_IDLE);
         if (lat == null || lon == null || !(PC has :saveWaypoint)) {
             status = Rez.Strings.DownloadNotSupported;
             Ui.requestUpdate();
@@ -918,6 +1022,9 @@ class gimporterApp extends App.AppBase {
         }
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function doExitInto() as Void {
         var intent = mIntent;
         mIntent = null;
@@ -929,10 +1036,10 @@ class gimporterApp extends App.AppBase {
         } catch (ex) {
             // e.g. a second exitTo() while the first is still in progress
             System.println("exitTo failed: " + ex.getErrorMessage());
-            mExiting = false;
             if (Comm has :registerForPhoneAppMessages) {
                 Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
             }
+            failImport(Rez.Strings.ImportFailed);
         }
     }
 
@@ -943,12 +1050,11 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function exitInto(intent as System.Intent) as Void {
-        if (intent == null || mExiting) {
+        if (intent == null || mState == STATE_LEAVING) {
             return;
         }
-        mExiting = true;
         mIntent = intent;
-        sendStatus("started", trackToStart);
+        setState(STATE_LEAVING);
         // Messages arriving from now on wait in the mailbox for the next
         // start instead of reaching an app that is about to leave.
         if (Comm has :registerForPhoneAppMessages) {
@@ -963,14 +1069,13 @@ class gimporterApp extends App.AppBase {
 
     function launchSimilarCourse(index as Number) as Void {
         var courses = mSimilarCourses;
-        if (courses != null && index < courses.size()) {
+        if (mState == STATE_CHOOSING_SIMILAR && courses != null && index < courses.size()) {
             // Courses, Tracks and Routes all provide getName()/toIntent();
             // the cast is only to satisfy the type checker.
             var course = courses[index] as PC.Course;
             System.println("Launching similar course: " + course.getName());
             rememberFingerprint(course, mPendingFingerprint);
             exitInto(course.toIntent());
-            mSimilarCourses = null;
         }
     }
 
@@ -980,28 +1085,21 @@ class gimporterApp extends App.AppBase {
     function onReceiveTrack(responseCode as Number, downloads as PC.Iterator?) as Void {
         System.println("onReceiveTrack");
 
-        if (!mDownloadPending) {
+        if (mState != STATE_DOWNLOADING) {
             // The user backed out while the download was in flight; the
             // view this callback wants to manipulate is no longer on top.
             System.println("download cancelled, ignoring result");
             return;
         }
-        mDownloadPending = false;
 
         if (responseCode != 200) {
             System.println("Code: " + responseCode);
-            canLoadList = true;
-            status = commErrorString(responseCode, Rez.Strings.DownloadFailed);
-            sendStatus("failed", trackToStart);
-            Ui.requestUpdate();
+            failImport(commErrorString(responseCode, Rez.Strings.DownloadFailed));
             return;
         }
         else if (downloads == null) {
             System.println("downloads == null");
-            canLoadList = true;
-            status = Rez.Strings.DownloadFailed;
-            sendStatus("failed", trackToStart);
-            Ui.requestUpdate();
+            failImport(Rez.Strings.DownloadFailed);
             return;
         }
         else {
@@ -1028,10 +1126,7 @@ class gimporterApp extends App.AppBase {
             if (trackToStart == null) {
                 System.println("no track name to search for");
                 Ui.popView(Ui.SLIDE_IMMEDIATE);
-                canLoadList = true;
-                status = Rez.Strings.ImportFailed;
-                sendStatus("failed", trackToStart);
-                Ui.requestUpdate();
+                failImport(Rez.Strings.ImportFailed);
                 return;
             }
 
@@ -1066,16 +1161,18 @@ class gimporterApp extends App.AppBase {
             }
 
             // Check if we found similar courses to present to user
-            if (mSimilarCourses != null && mSimilarCourses.size() > 0) {
+            if (mState == STATE_LEAVING) {
+                // searchCourse() found it and started it
+            } else if (mSimilarCourses != null && mSimilarCourses.size() > 0) {
                 System.println("Presenting " + mSimilarCourses.size() + " similar courses to user");
+                setState(STATE_CHOOSING_SIMILAR);
                 Ui.pushView(new SimilarCourseChooser(), new SimilarCourseChooserDelegate(), Ui.SLIDE_IMMEDIATE);
-            } else if (!mExiting) {
+            } else {
                 // No similar courses found - import failed
                 System.println("No similar courses found, import failed");
                 Ui.popView(Ui.SLIDE_IMMEDIATE);
-                canLoadList = true;
-                status = Rez.Strings.ImportFailed;
-                sendStatus("failed", trackToStart);
+                failImport(Rez.Strings.ImportFailed);
+                return;
             }
 
             Ui.requestUpdate();
@@ -1161,7 +1258,6 @@ class gimporterApp extends App.AppBase {
             System.println("Found exact course: " + startcourse.getName() + " asking for start");
             mSimilarCourses = null;
             Ui.popView(Ui.SLIDE_IMMEDIATE);
-            canLoadList = true;
             status = Rez.Strings.PressStart;
             // FIXME: Garmin
             // I can't do System.exitTo(course.toIntent())
@@ -1223,30 +1319,19 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
     }
 
     function onBack() as Boolean {
-        // Cancel whatever is in flight - callbacks check these flags and
+        // Cancel whatever is in flight - callbacks check the state and
         // bail out instead of manipulating a view stack we just changed.
-        app.canLoadList = true;
-        app.status = Rez.Strings.PressStart;
-        app.mSimilarCourses = null;
-        app.mPendingTrackIndex = null;
-        app.mDownloadPending = false;
-        app.mPortRequestPending = false;
-        app.stopPortTimers();
-        Ui.requestUpdate();
+        app.cancel();
         return false;
     }
 
     function onMenu() as Boolean {
-        if (app.canLoadList) {
-            app.loadTrackList();
-        }
+        app.loadTrackList();
         return true;
     }
 
     function onSelect() as Boolean {
-        if (app.canLoadList) {
-            app.loadTrackList();
-        }
+        app.loadTrackList();
         return true;
     }
 }

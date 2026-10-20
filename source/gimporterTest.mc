@@ -259,3 +259,36 @@ function testTrackMessage(logger as Test.Logger) as Boolean {
     Test.assert(!$.isTrackMessage({ "type" => "location", "title" => "Dom", "lat" => "1.0", "lon" => "2.0", "time" => now }, now));
     return true;
 }
+
+(:test)
+function testStateRules(logger as Test.Logger) as Boolean {
+    // the list can be (re)loaded only when nothing else is going on
+    Test.assert($.canLoadListIn(STATE_IDLE));
+    Test.assert($.canLoadListIn(STATE_WAITING_FOR_PHONE));
+    Test.assert(!$.canLoadListIn(STATE_REQUESTING_PORT));
+    Test.assert(!$.canLoadListIn(STATE_DOWNLOADING));
+    Test.assert(!$.canLoadListIn(STATE_LEAVING));
+    // a push from the phone supersedes loading the list, not an import
+    Test.assert($.acceptsPushIn(STATE_IDLE));
+    Test.assert($.acceptsPushIn(STATE_REQUESTING_PORT));
+    Test.assert($.acceptsPushIn(STATE_LOADING_LIST));
+    Test.assert(!$.acceptsPushIn(STATE_DOWNLOADING));
+    Test.assert(!$.acceptsPushIn(STATE_CHOOSING_SIMILAR));
+    Test.assert(!$.acceptsPushIn(STATE_LEAVING));
+    Test.assert($.isImportingIn(STATE_CHOOSING_SIMILAR));
+    Test.assert(!$.isImportingIn(STATE_LEAVING));
+    return true;
+}
+
+(:test)
+function testStaleCallbacksAreIgnored(logger as Test.Logger) as Boolean {
+    var app = new gimporterApp();
+    // a port timeout and a track list that arrive after the user backed
+    // out change nothing
+    app.proceedAfterPortResolved();
+    app.fallbackToDefaultPort();
+    app.onReceiveTracks(200, { "tracks" => [] });
+    Test.assertEqual(app.mState, STATE_IDLE);
+    Test.assert(app.getTracks() == null);
+    return true;
+}
