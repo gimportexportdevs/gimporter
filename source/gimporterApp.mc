@@ -251,6 +251,7 @@ class gimporterApp extends App.AppBase {
     var bluetoothTimer as TIME.Timer;
     var exitTimer as TIME.Timer;
     var mIntent as System.Intent? = null;
+    var mExiting as Boolean = false;  // exitTo() scheduled: the app is about to leave
     var mServerPort as Number = DEFAULT_PORT;  // Updated dynamically via the port handshake
     var mPendingTrackIndex as Number? = null;  // Track index to load after port is received
     var mPortResponseTimer as TIME.Timer?;  // Timer for port response timeout
@@ -314,6 +315,9 @@ class gimporterApp extends App.AppBase {
                 } else {
                     System.println("Ignoring stale or malformed delete request");
                 }
+            } else if (mExiting && (("track").equals(type) || ("location").equals(type))) {
+                // already leaving into a course or navigation
+                System.println("Leaving the app, ignoring " + type);
             } else if ($.isTrackMessage(data, now)) {
                 // Messages queued while the app was closed arrive from
                 // getInitialView(), before there is a view to push onto.
@@ -341,7 +345,7 @@ class gimporterApp extends App.AppBase {
         if (track == null) {
             return;
         }
-        if (mDownloadPending || mPortRequestPending) {
+        if (mDownloadPending || mPortRequestPending || mExiting) {
             System.println("Busy, ignoring pushed track");
             return;
         }
@@ -895,17 +899,30 @@ class gimporterApp extends App.AppBase {
     }
 
     function doExitInto() as Void {
-        if (mIntent != null) {
-            System.exitTo(mIntent);
-            mIntent = null;
+        var intent = mIntent;
+        mIntent = null;
+        if (intent == null) {
+            return;
+        }
+        try {
+            System.exitTo(intent);
+        } catch (ex) {
+            // e.g. a second exitTo() while the first is still in progress
+            System.println("exitTo failed: " + ex.getErrorMessage());
+            mExiting = false;
         }
     }
 
+    // Leave the app into a course or navigation. Only once: tracks pushed
+    // quickly one after another used to call exitTo() a second time while
+    // the first was in progress, which crashed with an unhandled exception.
     function exitInto(intent as System.Intent) as Void {
-        if (intent != null) {
-            mIntent = intent;
-            exitTimer.start(method(:doExitInto), 200, false);
+        if (intent == null || mExiting) {
+            return;
         }
+        mExiting = true;
+        mIntent = intent;
+        exitTimer.start(method(:doExitInto), 200, false);
     }
 
     function getSimilarCourses() as Array? {
