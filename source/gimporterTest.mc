@@ -268,6 +268,8 @@ function testStateRules(logger as Test.Logger) as Boolean {
     Test.assert(!$.canLoadListIn(STATE_REQUESTING_PORT));
     Test.assert(!$.canLoadListIn(STATE_DOWNLOADING));
     Test.assert(!$.canLoadListIn(STATE_LEAVING));
+    // a track waiting to be started does not lock the list
+    Test.assert($.canLoadListIn(STATE_READY_TO_START));
     // a push from the phone supersedes loading the list, not an import
     Test.assert($.acceptsPushIn(STATE_IDLE));
     Test.assert($.acceptsPushIn(STATE_REQUESTING_PORT));
@@ -275,6 +277,8 @@ function testStateRules(logger as Test.Logger) as Boolean {
     Test.assert(!$.acceptsPushIn(STATE_DOWNLOADING));
     Test.assert(!$.acceptsPushIn(STATE_CHOOSING_SIMILAR));
     Test.assert(!$.acceptsPushIn(STATE_LEAVING));
+    // the next pushed track replaces the one waiting to be started
+    Test.assert($.acceptsPushIn(STATE_READY_TO_START));
     Test.assert($.isImportingIn(STATE_CHOOSING_SIMILAR));
     Test.assert(!$.isImportingIn(STATE_LEAVING));
     return true;

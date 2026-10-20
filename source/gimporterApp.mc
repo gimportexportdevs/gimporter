@@ -28,9 +28,11 @@ const DEFAULT_PORT = 22222;
 //   IDLE ─start─> WAITING_FOR_PHONE ─> REQUESTING_PORT ─> LOADING_LIST ─> IDLE (track list shown)
 //   IDLE ─track chosen─> REQUESTING_PORT ─> DOWNLOADING
 //   phone pushes a track ─> DOWNLOADING
-//   DOWNLOADING ─> LEAVING (course found) | CHOOSING_SIMILAR | IDLE (failed)
+//   DOWNLOADING ─> LEAVING (chosen on the watch) | READY_TO_START (pushed)
+//                | CHOOSING_SIMILAR | IDLE (failed)
 //   CHOOSING_SIMILAR ─> LEAVING
-//   location chosen or pushed ─> LEAVING
+//   location chosen ─> LEAVING, location pushed ─> READY_TO_START
+//   READY_TO_START ─start─> LEAVING, ─phone pushes the next one─> DOWNLOADING
 //   back ─> IDLE (except while LEAVING)
 (:glance)
 enum {
@@ -40,16 +42,18 @@ enum {
     STATE_LOADING_LIST,  // dir.json requested
     STATE_DOWNLOADING,  // a track is downloading
     STATE_CHOOSING_SIMILAR,  // the downloaded track was not found, the user picks a similar one
+    STATE_READY_TO_START,  // a track or location from the phone is on the watch, start launches it
     STATE_LEAVING  // exitTo() scheduled
 }
 
 // The user can start loading the track list.
 function canLoadListIn(state as Number) as Boolean {
-    return state == STATE_IDLE || state == STATE_WAITING_FOR_PHONE;
+    return state == STATE_IDLE || state == STATE_WAITING_FOR_PHONE || state == STATE_READY_TO_START;
 }
 
 // A track or location pushed by the phone is acted on: it supersedes
-// loading the list, but not an import the watch is already busy with.
+// loading the list and the one waiting to be started, but not an import
+// the watch is already busy with.
 function acceptsPushIn(state as Number) as Boolean {
     return state != STATE_DOWNLOADING && state != STATE_CHOOSING_SIMILAR && state != STATE_LEAVING;
 }
@@ -228,17 +232,21 @@ function deleteRequestItems(data as Dictionary, now as Number) as Array? {
     return items;
 }
 
-// Comm.transmit() needs a listener; failures only matter for the log.
-class TransmitLogger extends Comm.ConnectionListener {
+// Tells the app's outbox that a message reached the phone or failed, so
+// it sends the next one: a transmit() while another one is still on its
+// way gets lost (the status right after the content list never arrived).
+class OutboxListener extends Comm.ConnectionListener {
     function initialize() {
         ConnectionListener.initialize();
     }
 
     function onComplete() as Void {
+        $.getApp().onTransmitDone();
     }
 
     function onError() as Void {
         System.println("Sending to the phone failed");
+        $.getApp().onTransmitDone();
     }
 }
 
@@ -299,6 +307,13 @@ class gimporterApp extends App.AppBase {
     var mPendingFingerprint as String? = null;  // gexporter's fingerprint of the track being imported
     var mPushTimer as TIME.Timer?;
     var mBackToStart as Boolean = false;  // popping the status views back to the start view
+    var mStartViewOnTop as Boolean = true;  // no status view pushed over the start view
+    var mStartWhenDone as Boolean = true;  // chosen on the watch: start right away, pushed: offer start
+    var mReadyIntent as System.Intent? = null;  // READY_TO_START: what start launches
+    var mOutbox as Array = [] as Array;  // messages to the phone, sent one after another
+    var mSending as Boolean = false;  // a message of mOutbox is on its way
+    var mSendTimer as TIME.Timer?;  // gives up waiting for the confirmation of a message
+    var mExitWaits as Number = 0;  // doExitInto() waited this often for mOutbox
 
     function initialize() {
         AppBase.initialize();
@@ -340,8 +355,13 @@ class gimporterApp extends App.AppBase {
         if (old == STATE_CHOOSING_SIMILAR) {
             mSimilarCourses = null;
         }
+        if (old == STATE_READY_TO_START) {
+            mReadyIntent = null;
+        }
         if (state == STATE_DOWNLOADING) {
             sendStatus("importing", trackToStart);
+        } else if (state == STATE_READY_TO_START) {
+            sendStatus("imported", trackToStart);
         } else if (state == STATE_LEAVING) {
             sendStatus("started", trackToStart);
         }
@@ -374,7 +394,7 @@ class gimporterApp extends App.AppBase {
         if (mState == STATE_LEAVING) {
             return;
         }
-        var wasImporting = $.isImportingIn(mState);
+        var wasImporting = $.isImportingIn(mState) || mState == STATE_READY_TO_START;
         status = Rez.Strings.PressStart;
         mPendingTrackIndex = null;
         setState(STATE_IDLE);
@@ -429,6 +449,7 @@ class gimporterApp extends App.AppBase {
                 }
                 mPushTimer.start(method(:onPushedTrack), 300, false);
             } else if ($.isLocationMessage(data, now)) {
+                mStartWhenDone = false;
                 navigateToLocation(data);
             } else {
                 System.println("Ignoring stale or malformed phone message");
@@ -452,6 +473,7 @@ class gimporterApp extends App.AppBase {
             return;
         }
         mServerPort = track["port"] as Number;
+        mStartWhenDone = false;
         var fp = track["hash"];
         downloadTrack(track["url"] as String, track["title"] as String, fp instanceof String ? fp : null);
     }
@@ -487,11 +509,56 @@ class gimporterApp extends App.AppBase {
     function sendStatus(state as String, title as String?) as Void {
         var msg = { "type" => "status", "state" => state, "title" => title == null ? "" : title }
             as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
-        try {
-            Comm.transmit(msg, null, new TransmitLogger());
-        } catch (ex) {
-            System.println("status not sent: " + ex.getErrorMessage());
+        transmit(msg);
+    }
+
+    // Send a message to the phone once the ones before it are through.
+    function transmit(msg as Dictionary) as Void {
+        mOutbox.add(msg);
+        if (!mSending) {
+            sendNext();
         }
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function sendNext() as Void {
+        mSending = false;
+        if (mSendTimer != null) {
+            mSendTimer.stop();
+        }
+        while (mOutbox.size() > 0) {
+            var msg = mOutbox[0] as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
+            mOutbox = mOutbox.slice(1, null);
+            // before transmit(): the listener may be called right away
+            mSending = true;
+            try {
+                Comm.transmit(msg, null, new OutboxListener());
+                // a confirmation that never comes must not block the outbox
+                if (mSendTimer == null) {
+                    mSendTimer = new TIME.Timer();
+                }
+                if (mSending) {
+                    mSendTimer.start(method(:onTransmitTimeout), 3000, false);
+                }
+                return;
+            } catch (ex) {
+                mSending = false;
+                System.println("not sent to the phone: " + ex.getErrorMessage());
+            }
+        }
+    }
+
+    function onTransmitDone() as Void {
+        if (mSending) {
+            sendNext();
+        }
+    }
+
+    function onTransmitTimeout() as Void {
+        System.println("no confirmation from the phone, sending the next message");
+        sendNext();
     }
 
     function appContent(kind as String) as PC.Iterator? {
@@ -541,7 +608,7 @@ class gimporterApp extends App.AppBase {
             Ui.requestUpdate();
         }
         var reply = { "type" => "content", "items" => items } as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
-        Comm.transmit(reply, null, new TransmitLogger());
+        transmit(reply);
     }
 
     // disableGlanceCheck: references foreground-only symbols; never called in
@@ -855,12 +922,13 @@ class gimporterApp extends App.AppBase {
     (:typecheck(disableGlanceCheck))
     function loadTrackNum(index as Number) as Void {
         System.println("loadTrack: " + index);
-        if (mState != STATE_IDLE) {
+        if (mState != STATE_IDLE && mState != STATE_READY_TO_START) {
             // e.g. a pushed track is downloading under the track list
             System.println("Busy (state " + mState + "), ignoring the choice");
             return;
         }
 
+        mStartWhenDone = true;
         var trackList = tracks;
         if (trackList != null && index < trackList.size()) {
             var track = trackList[index] as Dictionary;
@@ -1001,7 +1069,7 @@ class gimporterApp extends App.AppBase {
         // lets the phone mark the location as on the watch
         sendContentList(false);
         // The system asks which activity to navigate with.
-        exitInto(waypoint.toIntent());
+        finishImport(waypoint.toIntent());
     }
 
     function removeAppWaypoints(name as String) as Void {
@@ -1030,6 +1098,13 @@ class gimporterApp extends App.AppBase {
         var intent = mIntent;
         mIntent = null;
         if (intent == null) {
+            return;
+        }
+        // let "started" and the content list reach the phone first
+        if (mSending && mExitWaits < 10) {
+            mExitWaits++;
+            mIntent = intent;
+            exitTimer.start(method(:doExitInto), 200, false);
             return;
         }
         try {
@@ -1075,11 +1150,51 @@ class gimporterApp extends App.AppBase {
         }
     }
 
+    function onViewVisible(isStartView as Boolean) as Void {
+        mStartViewOnTop = isStartView;
+        onViewShown(isStartView);
+    }
+
     // disableGlanceCheck: references foreground-only symbols; never called in
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function popStatusView() as Void {
-        Ui.popView(Ui.SLIDE_IMMEDIATE);
+        // never the start view: popping it would close the app
+        if (!mStartViewOnTop) {
+            Ui.popView(Ui.SLIDE_IMMEDIATE);
+        }
+    }
+
+    // The track or location is on the watch. Chosen on the watch: start it.
+    // Pushed by the phone: offer it on the start view, so more can follow
+    // and the user starts the one they want.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function finishImport(intent as System.Intent) as Void {
+        if (mStartWhenDone) {
+            exitInto(intent);
+            return;
+        }
+        setState(STATE_READY_TO_START);
+        mReadyIntent = intent;
+        var title = trackToStart;
+        status = (title == null ? "" : normalizeName(title) + "\n") + (Ui.loadResource(Rez.Strings.PressStart) as String);
+        if (!mStartViewOnTop) {
+            mBackToStart = true;
+            exitTimer.start(method(:popStatusView), 50, false);
+        }
+        Ui.requestUpdate();
+    }
+
+    // Start pressed. @return false if nothing is waiting to be started
+    function startReady() as Boolean {
+        var intent = mReadyIntent;
+        if (mState != STATE_READY_TO_START || intent == null) {
+            return false;
+        }
+        exitInto(intent);
+        return true;
     }
 
     // Leave the app into a course or navigation. Only once: tracks pushed
@@ -1093,6 +1208,7 @@ class gimporterApp extends App.AppBase {
             return;
         }
         mIntent = intent;
+        mExitWaits = 0;
         setState(STATE_LEAVING);
         // Messages arriving from now on wait in the mailbox for the next
         // start instead of reaching an app that is about to leave.
@@ -1156,7 +1272,7 @@ class gimporterApp extends App.AppBase {
                 rememberFingerprint(download, mPendingFingerprint);
                 // lets the phone mark the track as on the watch
                 sendContentList(false);
-                exitInto(download.toIntent());
+                finishImport(download.toIntent());
                 return;
             }
 
@@ -1200,8 +1316,8 @@ class gimporterApp extends App.AppBase {
             }
 
             // Check if we found similar courses to present to user
-            if (mState == STATE_LEAVING) {
-                // searchCourse() found it and started it
+            if (mState == STATE_LEAVING || mState == STATE_READY_TO_START) {
+                // searchCourse() found it
             } else if (mSimilarCourses != null && mSimilarCourses.size() > 0) {
                 System.println("Presenting " + mSimilarCourses.size() + " similar courses to user");
                 setState(STATE_CHOOSING_SIMILAR);
@@ -1296,14 +1412,9 @@ class gimporterApp extends App.AppBase {
         if (startcourse != null) {
             System.println("Found exact course: " + startcourse.getName() + " asking for start");
             mSimilarCourses = null;
-            Ui.popView(Ui.SLIDE_IMMEDIATE);
-            status = Rez.Strings.PressStart;
-            // FIXME: Garmin
-            // I can't do System.exitTo(course.toIntent())
-            // It causes the Fenix5 to be in a strange state
             // already imported before: still the content of this track
             rememberFingerprint(startcourse, mPendingFingerprint);
-            exitInto(startcourse.toIntent()); // workaround
+            finishImport(startcourse.toIntent());
             return true;
         } else if (partialMatches.size() > 0) {
             System.println("Found " + partialMatches.size() + " similar courses");
@@ -1332,7 +1443,7 @@ class gimporterView extends Ui.View {
     }
 
     function onShow() as Void {
-        app.onViewShown(mIsStartView);
+        app.onViewVisible(mIsStartView);
     }
 
     function onLayout(dc as GFX.Dc) as Void {
@@ -1377,7 +1488,9 @@ class gimporterDelegate extends Ui.BehaviorDelegate {
     }
 
     function onSelect() as Boolean {
-        app.loadTrackList();
+        if (!app.startReady()) {
+            app.loadTrackList();
+        }
         return true;
     }
 }
