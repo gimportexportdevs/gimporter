@@ -298,6 +298,7 @@ class gimporterApp extends App.AppBase {
     var mPushedTrack as Dictionary? = null;  // Track the phone asked for, started by mPushTimer
     var mPendingFingerprint as String? = null;  // gexporter's fingerprint of the track being imported
     var mPushTimer as TIME.Timer?;
+    var mBackToStart as Boolean = false;  // popping the status views back to the start view
 
     function initialize() {
         AppBase.initialize();
@@ -395,7 +396,7 @@ class gimporterApp extends App.AppBase {
             Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
         }
         sendStatus("ready", null);
-        return [ new gimporterView(), new gimporterDelegate() ];
+        return [ new gimporterView(true), new gimporterDelegate() ];
     }
 
     // disableGlanceCheck: references foreground-only symbols; never called in
@@ -917,7 +918,7 @@ class gimporterApp extends App.AppBase {
         System.println("GPXorFIT: " + mGPXorFIT);
 
         Ui.pushView(
-            new gimporterView(),
+            new gimporterView(false),
             new gimporterDelegate(),
             Ui.SLIDE_IMMEDIATE );
         Ui.requestUpdate();
@@ -1043,6 +1044,44 @@ class gimporterApp extends App.AppBase {
         }
     }
 
+    // A view of the app became visible. After exitTo() that means the user
+    // backed out of the system's activity or navigation prompt: the app is
+    // still running. Go back to the start view, ready for the next track,
+    // instead of leaving the user on "Download complete" and the phone on
+    // "started".
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function onViewShown(isStartView as Boolean) as Void {
+        if (mState == STATE_LEAVING && mIntent == null) {
+            System.println("Back from exitTo()");
+            if (Comm has :registerForPhoneAppMessages) {
+                Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
+            }
+            status = Rez.Strings.PressStart;
+            setState(STATE_IDLE);
+            sendStatus("ready", null);
+            mBackToStart = true;
+        }
+        if (!mBackToStart) {
+            return;
+        }
+        if (isStartView) {
+            mBackToStart = false;
+            Ui.requestUpdate();
+        } else {
+            // not from within onShow(): the view stack is being updated
+            exitTimer.start(method(:popStatusView), 50, false);
+        }
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function popStatusView() as Void {
+        Ui.popView(Ui.SLIDE_IMMEDIATE);
+    }
+
     // Leave the app into a course or navigation. Only once: tracks pushed
     // quickly one after another used to call exitTo() a second time while
     // the first was in progress, which crashed with an unhandled exception.
@@ -1108,7 +1147,7 @@ class gimporterApp extends App.AppBase {
 
             // FIXME: Garmin
             // Without switchToView() the widget is gone
-            Ui.switchToView(new gimporterView(), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
+            Ui.switchToView(new gimporterView(false), new gimporterDelegate(), Ui.SLIDE_IMMEDIATE);
 
             status = Rez.Strings.DownloadComplete;
 
@@ -1283,10 +1322,17 @@ class gimporterView extends Ui.View {
     var st as Ui.Text?;
     var ps as String or ResourceId = "";
     var app as gimporterApp;
+    // the app's first view, rather than one pushed to show a download
+    var mIsStartView as Boolean;
 
-    function initialize() {
+    function initialize(isStartView as Boolean) {
         View.initialize();
         app = $.getApp();
+        mIsStartView = isStartView;
+    }
+
+    function onShow() as Void {
+        app.onViewShown(mIsStartView);
     }
 
     function onLayout(dc as GFX.Dc) as Void {
