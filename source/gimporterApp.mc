@@ -393,7 +393,10 @@ class gimporterApp extends App.AppBase {
                 {
                     "type" => mGPXorFIT,
                     "short" => "1",
-                    "longname" => "1" },
+                    "longname" => "1",
+                    // we save shared locations as waypoints; without this
+                    // gexporter leaves them out (older versions cannot)
+                    "locations" => "1" },
                 {
                     :method => Comm.HTTP_REQUEST_METHOD_GET,
                     :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_JSON },
