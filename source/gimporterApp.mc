@@ -294,6 +294,7 @@ class gimporterApp extends App.AppBase {
         if (Comm has :registerForPhoneAppMessages) {
             Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
         }
+        sendStatus("ready", null);
         return [ new gimporterView(), new gimporterDelegate() ];
     }
 
@@ -374,6 +375,22 @@ class gimporterApp extends App.AppBase {
         var fps = loadFingerprints();
         fps[$.contentKey($.kindOf(content), content.getId())] = fingerprint;
         Storage.setValue(FINGERPRINTS, fps as Dictionary<Storage.KeyType, Storage.ValueType>);
+    }
+
+    // Tell the phone what the app is doing: "ready" (started), "importing"
+    // (a track is downloading), "started" (leaving into a course or
+    // navigation) or "failed", so gexporter does not send while busy.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function sendStatus(state as String, title as String?) as Void {
+        var msg = { "type" => "status", "state" => state, "title" => title == null ? "" : title }
+            as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
+        try {
+            Comm.transmit(msg, null, new TransmitLogger());
+        } catch (ex) {
+            System.println("status not sent: " + ex.getErrorMessage());
+        }
     }
 
     function appContent(kind as String) as PC.Iterator? {
@@ -799,6 +816,7 @@ class gimporterApp extends App.AppBase {
         Ui.requestUpdate();
 
         mDownloadPending = true;
+        sendStatus("importing", title);
         try {
             if (mGPXorFIT.equals("FIT")) {
                 System.println("Downloading FIT");
@@ -827,6 +845,7 @@ class gimporterApp extends App.AppBase {
             mDownloadPending = false;
             canLoadList = true;
             status = Rez.Strings.DownloadNotSupported;
+            sendStatus("failed", title);
         }
 
         Ui.requestUpdate();
@@ -871,6 +890,7 @@ class gimporterApp extends App.AppBase {
 
         var fp = track["hash"];
         rememberFingerprint(waypoint, fp instanceof String ? fp : null);
+        trackToStart = name;
         status = Rez.Strings.PressStart;
         Ui.requestUpdate();
         // lets the phone mark the location as on the watch
@@ -910,18 +930,30 @@ class gimporterApp extends App.AppBase {
             // e.g. a second exitTo() while the first is still in progress
             System.println("exitTo failed: " + ex.getErrorMessage());
             mExiting = false;
+            if (Comm has :registerForPhoneAppMessages) {
+                Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
+            }
         }
     }
 
     // Leave the app into a course or navigation. Only once: tracks pushed
     // quickly one after another used to call exitTo() a second time while
     // the first was in progress, which crashed with an unhandled exception.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function exitInto(intent as System.Intent) as Void {
         if (intent == null || mExiting) {
             return;
         }
         mExiting = true;
         mIntent = intent;
+        sendStatus("started", trackToStart);
+        // Messages arriving from now on wait in the mailbox for the next
+        // start instead of reaching an app that is about to leave.
+        if (Comm has :registerForPhoneAppMessages) {
+            Comm.registerForPhoneAppMessages(null);
+        }
         exitTimer.start(method(:doExitInto), 200, false);
     }
 
@@ -960,6 +992,7 @@ class gimporterApp extends App.AppBase {
             System.println("Code: " + responseCode);
             canLoadList = true;
             status = commErrorString(responseCode, Rez.Strings.DownloadFailed);
+            sendStatus("failed", trackToStart);
             Ui.requestUpdate();
             return;
         }
@@ -967,6 +1000,7 @@ class gimporterApp extends App.AppBase {
             System.println("downloads == null");
             canLoadList = true;
             status = Rez.Strings.DownloadFailed;
+            sendStatus("failed", trackToStart);
             Ui.requestUpdate();
             return;
         }
@@ -996,6 +1030,7 @@ class gimporterApp extends App.AppBase {
                 Ui.popView(Ui.SLIDE_IMMEDIATE);
                 canLoadList = true;
                 status = Rez.Strings.ImportFailed;
+                sendStatus("failed", trackToStart);
                 Ui.requestUpdate();
                 return;
             }
@@ -1034,12 +1069,13 @@ class gimporterApp extends App.AppBase {
             if (mSimilarCourses != null && mSimilarCourses.size() > 0) {
                 System.println("Presenting " + mSimilarCourses.size() + " similar courses to user");
                 Ui.pushView(new SimilarCourseChooser(), new SimilarCourseChooserDelegate(), Ui.SLIDE_IMMEDIATE);
-            } else {
+            } else if (!mExiting) {
                 // No similar courses found - import failed
                 System.println("No similar courses found, import failed");
                 Ui.popView(Ui.SLIDE_IMMEDIATE);
                 canLoadList = true;
                 status = Rez.Strings.ImportFailed;
+                sendStatus("failed", trackToStart);
             }
 
             Ui.requestUpdate();
