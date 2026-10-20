@@ -241,12 +241,12 @@ class OutboxListener extends Comm.ConnectionListener {
     }
 
     function onComplete() as Void {
-        $.getApp().onTransmitDone();
+        $.getApp().onTransmitDone(true);
     }
 
     function onError() as Void {
         System.println("Sending to the phone failed");
-        $.getApp().onTransmitDone();
+        $.getApp().onTransmitDone(false);
     }
 }
 
@@ -266,22 +266,6 @@ function findWaypoint(it as PC.Iterator, name as String) as PC.Waypoint? {
         wp = it.next() as PC.Waypoint?;
     }
     return prefixMatch;
-}
-
-class PortRequestListener extends Comm.ConnectionListener {
-    function initialize() {
-        ConnectionListener.initialize();
-    }
-
-    function onComplete() {
-        System.println("Port request sent to Android app");
-    }
-
-    function onError() {
-        System.println("Failed to send port request");
-        // Fall back to default port with delay to let BLE recover
-        getApp().fallbackToDefaultPort();
-    }
 }
 
 // (:glance) because the system instantiates the AppBase subclass inside the
@@ -310,8 +294,9 @@ class gimporterApp extends App.AppBase {
     var mStartViewOnTop as Boolean = true;  // no status view pushed over the start view
     var mStartWhenDone as Boolean = true;  // chosen on the watch: start right away, pushed: offer start
     var mReadyIntent as System.Intent? = null;  // READY_TO_START: what start launches
-    var mOutbox as Array = [] as Array;  // messages to the phone, sent one after another
+    var mOutbox as Array = [] as Array;  // [message, isPortRequest] to the phone, sent one after another
     var mSending as Boolean = false;  // a message of mOutbox is on its way
+    var mSendingPortRequest as Boolean = false;  // ... and it is GET_PORT
     var mSendTimer as TIME.Timer?;  // gives up waiting for the confirmation of a message
     var mExitWaits as Number = 0;  // doExitInto() waited this often for mOutbox
 
@@ -513,8 +498,12 @@ class gimporterApp extends App.AppBase {
     }
 
     // Send a message to the phone once the ones before it are through.
-    function transmit(msg as Dictionary) as Void {
-        mOutbox.add(msg);
+    function transmit(msg as Object) as Void {
+        queue(msg, false);
+    }
+
+    function queue(msg as Object, isPortRequest as Boolean) as Void {
+        mOutbox.add([msg, isPortRequest]);
         if (!mSending) {
             sendNext();
         }
@@ -529,12 +518,24 @@ class gimporterApp extends App.AppBase {
             mSendTimer.stop();
         }
         while (mOutbox.size() > 0) {
-            var msg = mOutbox[0] as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
+            var entry = mOutbox[0] as Array;
             mOutbox = mOutbox.slice(1, null);
+            var isPortRequest = entry[1] as Boolean;
+            if (isPortRequest && mState != STATE_REQUESTING_PORT) {
+                continue;  // backed out while it waited
+            }
             // before transmit(): the listener may be called right away
             mSending = true;
+            mSendingPortRequest = isPortRequest;
             try {
-                Comm.transmit(msg, null, new OutboxListener());
+                if (isPortRequest) {
+                    // 1 second to wait for the reply
+                    if (mPortResponseTimer == null) {
+                        mPortResponseTimer = new TIME.Timer();
+                    }
+                    mPortResponseTimer.start(method(:onPortResponseTimeout), 1000, false);
+                }
+                Comm.transmit(entry[0] as Comm.TransmitType, null, new OutboxListener());
                 // a confirmation that never comes must not block the outbox
                 if (mSendTimer == null) {
                     mSendTimer = new TIME.Timer();
@@ -546,14 +547,22 @@ class gimporterApp extends App.AppBase {
             } catch (ex) {
                 mSending = false;
                 System.println("not sent to the phone: " + ex.getErrorMessage());
+                if (isPortRequest) {
+                    fallbackToDefaultPort();
+                }
             }
         }
     }
 
-    function onTransmitDone() as Void {
-        if (mSending) {
-            sendNext();
+    function onTransmitDone(success as Boolean) as Void {
+        if (!mSending) {
+            return;
         }
+        if (!success && mSendingPortRequest) {
+            // Fall back to default port with delay to let BLE recover
+            fallbackToDefaultPort();
+        }
+        sendNext();
     }
 
     function onTransmitTimeout() as Void {
@@ -723,15 +732,9 @@ class gimporterApp extends App.AppBase {
             // Check if phone app messaging is available; the reply arrives
             // through onPhoneMessage(), registered in getInitialView().
             if (Comm has :registerForPhoneAppMessages) {
-                // Start timeout timer - 1 second to wait for response
-                if (mPortResponseTimer == null) {
-                    mPortResponseTimer = new TIME.Timer();
-                }
-                mPortResponseTimer.start(method(:onPortResponseTimeout), 1000, false);
-
-                // Send request to Android app
-                var message = ["GET_PORT"];
-                Comm.transmit(message, null, new PortRequestListener());
+                // Send request to Android app; sendNext() starts the
+                // response timeout once it is actually on its way
+                queue(["GET_PORT"], true);
             } else {
                 // Device doesn't support phone app messaging, use default port
                 System.println("Device doesn't support phone app messaging, using default port");
