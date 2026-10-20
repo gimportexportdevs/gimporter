@@ -19,4 +19,5 @@
     <string id="NoTracks">Parkur bulunamadı</string>
     <string id="trackStartTitle">Başlatmak için Start'a basın</string>
     <string id="PressStart" scope="glance">Start/Menu'ye basın</string>
+    <string id="PhoneManaging">Telefondan yönetiliyor</string>
 </strings>

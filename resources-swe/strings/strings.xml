@@ -19,4 +19,5 @@
     <string id="NoTracks">Inga spår hittades</string>
     <string id="trackStartTitle">Tryck på Start för att ladda</string>
     <string id="PressStart" scope="glance">Tryck på Start/Menu</string>
+    <string id="PhoneManaging">Hanteras från telefonen</string>
 </strings>

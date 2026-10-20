@@ -19,4 +19,5 @@
     <string id="NoTracks">Nessun percorso trovato</string>
     <string id="trackStartTitle">Premi Start per avviare</string>
     <string id="PressStart" scope="glance">Premi Start/Menu</string>
+    <string id="PhoneManaging">Gestito dal telefono</string>
 </strings>

@@ -74,20 +74,86 @@ const LOCATION_MESSAGE_MAX_AGE = 900;  // seconds
 // Tolerated clock difference between phone and watch.
 const LOCATION_MESSAGE_MAX_SKEW = 300;  // seconds
 
+// "time" (the phone's epoch seconds) of a queued phone message is recent
+// enough to act on.
+function isFreshMessage(data as Dictionary, now as Number) as Boolean {
+    var time = data["time"];
+    if (!(time instanceof Number)) {
+        return false;
+    }
+    return (now - time) <= LOCATION_MESSAGE_MAX_AGE && (time - now) <= LOCATION_MESSAGE_MAX_SKEW;
+}
+
 // A phone message {"type": "location", "title", "lat", "lon", "time"} that
-// is recent enough to act on; "time" is the phone's epoch seconds.
+// is recent enough to act on.
 function isLocationMessage(data as Object?, now as Number) as Boolean {
     if (!(data instanceof Dictionary)) {
         return false;
     }
     var type = data["type"];
-    var time = data["time"];
     if (!(type instanceof String) || !type.equals("location")
-        || !(data["title"] instanceof String) || !$.isLocation(data)
-        || !(time instanceof Number)) {
+        || !(data["title"] instanceof String) || !$.isLocation(data)) {
         return false;
     }
-    return (now - time) <= LOCATION_MESSAGE_MAX_AGE && (time - now) <= LOCATION_MESSAGE_MAX_SKEW;
+    return $.isFreshMessage(data, now);
+}
+
+// Content kinds the phone can list and delete. remove() only works for
+// content gimporter created itself, which is what getApp*() returns.
+const CONTENT_KINDS = ["course", "track", "route", "waypoint"] as Array<String>;
+// Keeps the reply to the phone within the BLE message size.
+const MAX_CONTENT_ITEMS = 100;
+
+// Append [kind, name, id] for each content object of the iterator.
+function appendContent(items as Array, kind as String, it as PC.Iterator) as Void {
+    var c = it.next() as PC.Course?;
+    while (c != null && items.size() < MAX_CONTENT_ITEMS) {
+        items.add([kind, c.getName(), c.getId()]);
+        c = it.next() as PC.Course?;
+    }
+}
+
+function findContentById(it as PC.Iterator, id as Number) as PC.Course? {
+    var c = it.next() as PC.Course?;
+    while (c != null) {
+        if (c.getId() == id) {
+            return c;
+        }
+        c = it.next() as PC.Course?;
+    }
+    return null;
+}
+
+// The [kind, id] pairs of a fresh {"type": "delete", "items", "time"}
+// request, or null if it is stale or malformed. A delete queued while the
+// app was closed must not run hours later.
+function deleteRequestItems(data as Dictionary, now as Number) as Array? {
+    var items = data["items"];
+    if (!(items instanceof Array) || !$.isFreshMessage(data, now)) {
+        return null;
+    }
+    for (var i = 0; i < items.size(); i++) {
+        var item = items[i];
+        if (!(item instanceof Array) || item.size() != 2
+            || !(item[0] instanceof String) || !(item[1] instanceof Number)) {
+            return null;
+        }
+    }
+    return items;
+}
+
+// Comm.transmit() needs a listener; failures only matter for the log.
+class TransmitLogger extends Comm.ConnectionListener {
+    function initialize() {
+        ConnectionListener.initialize();
+    }
+
+    function onComplete() as Void {
+    }
+
+    function onError() as Void {
+        System.println("Sending to the phone failed");
+    }
 }
 
 // The device may shorten long names, so a stored name that is a prefix
@@ -186,7 +252,19 @@ class gimporterApp extends App.AppBase {
     function onPhoneMessage(msg as Comm.PhoneAppMessage) as Void {
         var data = msg.data;
         if (data instanceof Dictionary) {
-            if ($.isLocationMessage(data, Time.now().value())) {
+            var type = data["type"] as Object?;
+            var now = Time.now().value();
+            if ("list".equals(type)) {
+                sendContentList();
+            } else if ("delete".equals(type)) {
+                var items = $.deleteRequestItems(data, now);
+                if (items != null) {
+                    deleteContent(items);
+                    sendContentList();
+                } else {
+                    System.println("Ignoring stale or malformed delete request");
+                }
+            } else if ($.isLocationMessage(data, now)) {
                 navigateToLocation(data);
             } else {
                 System.println("Ignoring stale or malformed phone message");
@@ -194,6 +272,67 @@ class gimporterApp extends App.AppBase {
             return;
         }
         onPortReceived(msg);
+    }
+
+    function appContent(kind as String) as PC.Iterator? {
+        if (kind.equals("course") && (PC has :getAppCourses)) {
+            return PC.getAppCourses();
+        }
+        if (kind.equals("track") && (PC has :getAppTracks)) {
+            return PC.getAppTracks();
+        }
+        if (kind.equals("route") && (PC has :getAppRoutes)) {
+            return PC.getAppRoutes();
+        }
+        if (kind.equals("waypoint") && (PC has :getAppWaypoints)) {
+            return PC.getAppWaypoints();
+        }
+        return null;
+    }
+
+    // Reply to the phone's manage screen with everything gimporter stored.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function sendContentList() as Void {
+        var items = [] as Array;
+        for (var i = 0; i < CONTENT_KINDS.size(); i++) {
+            var it = appContent(CONTENT_KINDS[i]);
+            if (it != null) {
+                $.appendContent(items, CONTENT_KINDS[i], it);
+            }
+        }
+        System.println("Sending " + items.size() + " content items to the phone");
+        status = Rez.Strings.PhoneManaging;
+        Ui.requestUpdate();
+        var reply = { "type" => "content", "items" => items } as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
+        Comm.transmit(reply, null, new TransmitLogger());
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function deleteContent(items as Array) as Void {
+        for (var i = 0; i < items.size(); i++) {
+            var item = items[i] as Array;
+            var kind = item[0] as String;
+            var it = appContent(kind);
+            if (it == null) {
+                continue;
+            }
+            var found = $.findContentById(it, item[1] as Number);
+            if (found == null || !(found has :remove)) {
+                continue;
+            }
+            var content = found as PC.Course;
+            try {
+                content.remove();
+                System.println("Deleted " + kind + " " + content.getName());
+            } catch (ex) {
+                // not owned by gimporter, or already gone
+                System.println("Could not delete " + kind + ": " + ex.getErrorMessage());
+            }
+        }
     }
 
     // Glance shown in the widget carousel on glance-capable devices.

@@ -19,4 +19,5 @@
     <string id="NoTracks">トラックが見つかりません</string>
     <string id="trackStartTitle">Startを押して読み込み</string>
     <string id="PressStart" scope="glance">Start/Menuを押す</string>
+    <string id="PhoneManaging">スマホから管理中</string>
 </strings>

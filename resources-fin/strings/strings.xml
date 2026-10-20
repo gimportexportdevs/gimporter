@@ -19,4 +19,5 @@
     <string id="NoTracks">Reittejä ei löytynyt</string>
     <string id="trackStartTitle">Käynnistä painamalla Start</string>
     <string id="PressStart" scope="glance">Paina Start/Menu</string>
+    <string id="PhoneManaging">Hallitaan puhelimesta</string>
 </strings>

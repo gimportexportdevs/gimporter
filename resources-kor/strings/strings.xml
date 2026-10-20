@@ -19,4 +19,5 @@
     <string id="NoTracks">트랙을 찾을 수 없음</string>
     <string id="trackStartTitle">Start를 눌러 불러오기</string>
     <string id="PressStart" scope="glance">Start/Menu 누르기</string>
+    <string id="PhoneManaging">휴대폰에서 관리 중</string>
 </strings>

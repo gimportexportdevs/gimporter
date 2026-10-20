@@ -19,4 +19,5 @@
     <string id="NoTracks">Aucun parcours trouvé</string>
     <string id="trackStartTitle">Start pour lancer le parcours</string>
     <string id="PressStart" scope="glance">Appuyez sur Start/Menu</string>
+    <string id="PhoneManaging">Géré depuis le téléphone</string>
 </strings>

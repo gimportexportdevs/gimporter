@@ -9,13 +9,19 @@ using Toybox.PersistedContent as PC;
 (:test)
 class FakeContent {
     var mName as String;
+    var mId as Number;
 
-    function initialize(name as String) {
+    function initialize(name as String, id as Number) {
         mName = name;
+        mId = id;
     }
 
     function getName() as String {
         return mName;
+    }
+
+    function getId() as Number {
+        return mId;
     }
 }
 
@@ -27,7 +33,8 @@ class FakeIterator {
     function initialize(names as Array<String>) {
         mItems = [] as Array<FakeContent>;
         for (var i = 0; i < names.size(); i++) {
-            mItems.add(new FakeContent(names[i]));
+            // ids 101, 102, ... so they are not confused with indices
+            mItems.add(new FakeContent(names[i], 101 + i));
         }
     }
 
@@ -180,5 +187,55 @@ function testLocationMessageMalformed(logger as Test.Logger) as Boolean {
     Test.assert(!$.isLocationMessage({ "type" => "location", "lat" => "1.0", "lon" => "2.0", "time" => now }, now));
     Test.assert(!$.isLocationMessage({ "type" => "location", "title" => "Dom", "lat" => 1.0, "lon" => 2.0, "time" => now }, now));
     Test.assert(!$.isLocationMessage({ "type" => "location", "title" => "Dom", "lat" => "1.0", "lon" => "2.0" }, now));
+    return true;
+}
+
+(:test)
+function testAppendContent(logger as Test.Logger) as Boolean {
+    var items = [] as Array;
+    $.appendContent(items, "course", TestHelpers.fakeIterator(["Tour", "Runde"]));
+    $.appendContent(items, "waypoint", TestHelpers.fakeIterator(["Dom"]));
+    Test.assertEqual(items.size(), 3);
+    var first = items[0] as Array<Object>;
+    Test.assertEqual(first[0], "course");
+    Test.assertEqual(first[1], "Tour");
+    Test.assertEqual(first[2], 101);
+    var last = items[2] as Array<Object>;
+    Test.assertEqual(last[0], "waypoint");
+    Test.assertEqual(last[1], "Dom");
+    return true;
+}
+
+(:test)
+function testAppendContentIsCapped(logger as Test.Logger) as Boolean {
+    var names = [] as Array<String>;
+    for (var i = 0; i < MAX_CONTENT_ITEMS + 5; i++) {
+        names.add("T" + i);
+    }
+    var items = [] as Array;
+    $.appendContent(items, "course", TestHelpers.fakeIterator(names));
+    Test.assertEqual(items.size(), MAX_CONTENT_ITEMS);
+    return true;
+}
+
+(:test)
+function testFindContentById(logger as Test.Logger) as Boolean {
+    Test.assertEqual(TestHelpers.nameOf($.findContentById(TestHelpers.fakeIterator(["A", "B", "C"]), 102)), "B");
+    Test.assert($.findContentById(TestHelpers.fakeIterator(["A"]), 999) == null);
+    return true;
+}
+
+(:test)
+function testDeleteRequestItems(logger as Test.Logger) as Boolean {
+    var now = 1790000000;
+    var items = $.deleteRequestItems({ "type" => "delete", "items" => [["course", 101], ["waypoint", 7]], "time" => now }, now);
+    Test.assert(items != null);
+    Test.assertEqual((items as Array).size(), 2);
+    // queued for hours while the app was closed
+    Test.assert($.deleteRequestItems({ "type" => "delete", "items" => [["course", 101]], "time" => now - 86400 }, now) == null);
+    // malformed entries reject the whole request
+    Test.assert($.deleteRequestItems({ "type" => "delete", "items" => [["course", "101"]], "time" => now }, now) == null);
+    Test.assert($.deleteRequestItems({ "type" => "delete", "items" => [["course"]], "time" => now }, now) == null);
+    Test.assert($.deleteRequestItems({ "type" => "delete", "time" => now }, now) == null);
     return true;
 }

@@ -19,4 +19,5 @@
     <string id="NoTracks">No se encontraron rutas</string>
     <string id="trackStartTitle">Pulsa Start para cargar</string>
     <string id="PressStart" scope="glance">Pulsa Start/Menu</string>
+    <string id="PhoneManaging">Gestionado desde el teléfono</string>
 </strings>

@@ -19,4 +19,5 @@
     <string id="NoTracks">Nie znaleziono tras</string>
     <string id="trackStartTitle">Naciśnij Start, aby uruchomić</string>
     <string id="PressStart" scope="glance">Naciśnij Start/Menu</string>
+    <string id="PhoneManaging">Zarządzane z telefonu</string>
 </strings>

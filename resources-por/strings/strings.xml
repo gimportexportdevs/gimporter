@@ -19,4 +19,5 @@
     <string id="NoTracks">Nenhum percurso encontrado</string>
     <string id="trackStartTitle">Pressione Start para iniciar</string>
     <string id="PressStart" scope="glance">Pressione Start/Menu</string>
+    <string id="PhoneManaging">Gerido pelo telemóvel</string>
 </strings>

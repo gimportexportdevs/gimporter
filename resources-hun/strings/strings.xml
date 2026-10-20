@@ -19,4 +19,5 @@
     <string id="NoTracks">Nincs nyomvonal</string>
     <string id="trackStartTitle">Nyomja meg a Start gombot</string>
     <string id="PressStart" scope="glance">Nyomja meg a Start/Menu-t</string>
+    <string id="PhoneManaging">Telefonról kezelve</string>
 </strings>

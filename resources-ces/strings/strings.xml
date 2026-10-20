@@ -19,4 +19,5 @@
     <string id="NoTracks">Žádné trasy nenalezeny</string>
     <string id="trackStartTitle">Stiskněte Start pro spuštění</string>
     <string id="PressStart" scope="glance">Stiskněte Start/Menu</string>
+    <string id="PhoneManaging">Spravováno z telefonu</string>
 </strings>

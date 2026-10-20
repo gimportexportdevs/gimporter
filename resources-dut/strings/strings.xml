@@ -19,4 +19,5 @@
     <string id="NoTracks">Geen tracks gevonden</string>
     <string id="trackStartTitle">Druk op Start om te laden</string>
     <string id="PressStart" scope="glance">Druk op Start/Menu</string>
+    <string id="PhoneManaging">Beheerd via telefoon</string>
 </strings>

@@ -19,4 +19,5 @@
     <string id="NoTracks">Треків не знайдено</string>
     <string id="trackStartTitle">Натисніть Start для запуску</string>
     <string id="PressStart" scope="glance">Натисніть Start/Menu</string>
+    <string id="PhoneManaging">Керується з телефона</string>
 </strings>

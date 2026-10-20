@@ -19,4 +19,5 @@
     <string id="NoTracks">Δεν βρέθηκαν διαδρομές</string>
     <string id="trackStartTitle">Πατήστε Start για εκκίνηση</string>
     <string id="PressStart" scope="glance">Πατήστε Start/Menu</string>
+    <string id="PhoneManaging">Διαχείριση από το τηλέφωνο</string>
 </strings>

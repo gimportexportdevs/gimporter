@@ -19,4 +19,5 @@
     <string id="NoTracks">Keine Tracks gefunden</string>
     <string id="trackStartTitle">Start drücken zum Laden</string>
     <string id="PressStart" scope="glance">Start/Menü drücken</string>
+    <string id="PhoneManaging">Vom Telefon gesteuert</string>
 </strings>

@@ -19,4 +19,5 @@
     <string id="NoTracks">找不到軌跡</string>
     <string id="trackStartTitle">按 Start 載入軌跡</string>
     <string id="PressStart" scope="glance">按 Start/Menu</string>
+    <string id="PhoneManaging">由手機管理</string>
 </strings>
