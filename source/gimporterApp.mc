@@ -159,6 +159,18 @@ function isTrackMessage(data as Object?, now as Number) as Boolean {
     return $.isFreshMessage(data, now);
 }
 
+// Whether the device has the PersistedContent API to list and delete the
+// app's content; chosen per device at build time, see monkey-base.jungleinc.
+(:content)
+function hasContentApi() as Boolean {
+    return true;
+}
+
+(:nocontent)
+function hasContentApi() as Boolean {
+    return false;
+}
+
 // Content kinds the phone can list and delete. remove() only works for
 // content gimporter created itself, which is what getApp*() returns.
 const CONTENT_KINDS = ["course", "track", "route", "waypoint"] as Array<String>;
@@ -589,6 +601,9 @@ class gimporterApp extends App.AppBase {
     }
 
     function appContent(kind as String) as PC.Iterator? {
+        if (!$.hasContentApi()) {
+            return null;
+        }
         if (kind.equals("course") && (PC has :getAppCourses)) {
             return PC.getAppCourses();
         }
@@ -934,7 +949,7 @@ class gimporterApp extends App.AppBase {
 
         tracks = trackList;
 
-        Ui.pushView(new TrackChooser(0), new TrackChooserDelegate(0), Ui.SLIDE_IMMEDIATE);
+        $.pushTrackChooser();
 
     }
 
@@ -1200,7 +1215,8 @@ class gimporterApp extends App.AppBase {
         setState(STATE_READY_TO_START);
         mReadyIntent = intent;
         var title = trackToStart;
-        status = (title == null ? "" : normalizeName(title) + "\n") + (Ui.loadResource(Rez.Strings.PressStart) as String);
+        // the view adds "Press Start" below the title
+        status = title == null ? "" : normalizeName(title);
         if (!mStartViewOnTop) {
             mBackToStart = true;
             exitTimer.start(method(:popStatusView), 50, false);
@@ -1342,7 +1358,7 @@ class gimporterApp extends App.AppBase {
             } else if (mSimilarCourses != null && mSimilarCourses.size() > 0) {
                 System.println("Presenting " + mSimilarCourses.size() + " similar courses to user");
                 setState(STATE_CHOOSING_SIMILAR);
-                Ui.pushView(new SimilarCourseChooser(), new SimilarCourseChooserDelegate(), Ui.SLIDE_IMMEDIATE);
+                $.pushSimilarCourseChooser();
             } else {
                 // No similar courses found - import failed
                 System.println("No similar courses found, import failed");
@@ -1454,12 +1470,38 @@ class gimporterApp extends App.AppBase {
 // until it fits.
 const STATUS_FONTS = [GFX.FONT_MEDIUM, GFX.FONT_SMALL, GFX.FONT_TINY, GFX.FONT_XTINY] as Array<GFX.FontDefinition>;
 
-// The status text in at most this many lines, or null if it does not fit.
-function wrapStatus(text as String, font as GFX.FontDefinition, width as Number, height as Number) as String? {
+// The status text wrapped to the area, or null if it does not fit.
+function wrapStatus(dc as GFX.Dc, text as String, font as GFX.FontDefinition, width as Number, height as Number) as String? {
     if (GFX has :fitTextToArea) {
         return GFX.fitTextToArea(text, font, width, height, false);
     }
-    return text;
+    // before API 3.1: wrap at spaces ourselves
+    var lines = [] as Array<String>;
+    var line = "";
+    var rest = text;
+    while (rest.length() > 0) {
+        var sp = rest.find(" ");
+        var word = sp == null ? rest : rest.substring(0, sp) as String;
+        rest = sp == null ? "" : rest.substring(sp + 1, rest.length()) as String;
+        var candidate = line.length() == 0 ? word : line + " " + word;
+        if (dc.getTextWidthInPixels(candidate, font) <= width) {
+            line = candidate;
+        } else if (line.length() == 0 || dc.getTextWidthInPixels(word, font) > width) {
+            return null;  // a single word too wide for this font
+        } else {
+            lines.add(line);
+            line = word;
+        }
+    }
+    lines.add(line);
+    if (lines.size() * dc.getFontHeight(font) > height) {
+        return null;
+    }
+    var out = lines[0];
+    for (var i = 1; i < lines.size(); i++) {
+        out += "\n" + lines[i];
+    }
+    return out;
 }
 
 // Drawn in code rather than from a layout per screen size, so it adapts to
@@ -1523,16 +1565,21 @@ class gimporterView extends Ui.View {
         var areaW = (w * (round ? 0.78 : 0.92)).toNumber();
         var lineH = dc.getFontHeight(GFX.FONT_XTINY);
         var areaTop = subscreen != null ? top : top + lineH / 2;
-        var areaH = (subscreen != null ? bottom - lineH / 4 : bottom - lineH / 2) - areaTop;
+        var areaBottom = subscreen != null ? bottom - lineH / 4 : bottom - lineH / 2;
+        // A track waiting to be started: its title, and how to start it
+        // in a smaller font below.
+        if (app.mState == STATE_READY_TO_START) {
+            var hintH = dc.getFontHeight(GFX.FONT_TINY);
+            dc.drawText(w / 2, areaBottom - hintH / 2, GFX.FONT_TINY, mPressStart, center);
+            areaBottom -= hintH;
+        }
+        var areaH = areaBottom - areaTop;
         var areaMid = areaTop + areaH / 2;
         var font = STATUS_FONTS[STATUS_FONTS.size() - 1];
         var fitted = null;
         for (var i = 0; i < STATUS_FONTS.size() && fitted == null; i++) {
             font = STATUS_FONTS[i];
-            fitted = $.wrapStatus(text, font, areaW, areaH);
-            if (fitted != null && !(GFX has :fitTextToArea) && dc.getTextWidthInPixels(text, font) > areaW) {
-                fitted = null;  // no wrapping before API 3.1: try a smaller font
-            }
+            fitted = $.wrapStatus(dc, text, font, areaW, areaH);
         }
         if (fitted == null) {
             fitted = (GFX has :fitTextToArea) ? GFX.fitTextToArea(text, font, areaW, areaH, true) : text;

@@ -7,6 +7,8 @@
             <iq:product id="approachs62"/>
             <iq:product id="approachs7042mm"/>
             <iq:product id="approachs7047mm"/>
+            <iq:product id="approachs7243mm"/>
+            <iq:product id="approachs7247mm"/>
             <iq:product id="d2air"/>
             <iq:product id="d2airx10"/>
             <iq:product id="d2charlie"/>
@@ -15,6 +17,7 @@
             <iq:product id="d2deltas"/>
             <iq:product id="d2mach1"/>
             <iq:product id="d2mach2"/>
+            <iq:product id="d2mach2pro"/>
             <iq:product id="descentg1"/>
             <iq:product id="descentg2"/>
             <iq:product id="descentmk1"/>
@@ -27,6 +30,7 @@
             <iq:product id="edge1030plus"/>
             <iq:product id="edge1040"/>
             <iq:product id="edge1050"/>
+            <iq:product id="edge1060"/>
             <iq:product id="edge520plus"/>
             <iq:product id="edge530"/>
             <iq:product id="edge540"/>
@@ -42,10 +46,12 @@
             <iq:product id="edgemtb"/>
             <iq:product id="enduro"/>
             <iq:product id="enduro3"/>
+            <iq:product id="enduro4"/>
             <iq:product id="epix2"/>
             <iq:product id="epix2pro42mm"/>
             <iq:product id="epix2pro47mm"/>
             <iq:product id="epix2pro51mm"/>
+            <iq:product id="etrextouch"/>
             <iq:product id="fenix5"/>
             <iq:product id="fenix5plus"/>
             <iq:product id="fenix5s"/>
@@ -95,6 +101,7 @@
             <iq:product id="fr57047mm"/>
             <iq:product id="fr645"/>
             <iq:product id="fr645m"/>
+            <iq:product id="fr70"/>
             <iq:product id="fr735xt"/>
             <iq:product id="fr745"/>
             <iq:product id="fr935"/>
@@ -119,6 +126,7 @@
             <iq:product id="instincte45mm"/>
             <iq:product id="marq2"/>
             <iq:product id="marq2aviator"/>
+            <iq:product id="marq3"/>
             <iq:product id="marqadventurer"/>
             <iq:product id="marqathlete"/>
             <iq:product id="marqaviator"/>
@@ -127,12 +135,13 @@
             <iq:product id="marqdriver"/>
             <iq:product id="marqexpedition"/>
             <iq:product id="marqgolfer"/>
-            <iq:product id="venu441mm"/>
-            <iq:product id="venu445mm"/>
-            <iq:product id="vivoactive6"/>
             <iq:product id="montana7xx"/>
             <iq:product id="oregon7xx"/>
             <iq:product id="rino7xx"/>
+            <iq:product id="venu441mm"/>
+            <iq:product id="venu445mm"/>
+            <iq:product id="venux1"/>
+            <iq:product id="vivoactive6"/>
         </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications"/>

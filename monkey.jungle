@@ -1,5 +1,9 @@
 project.manifest = manifest-app.xml
 base.sourcePath = source
+# The PersistedContent API to list and delete the app's content; devices
+# whose definition lacks getAppCourses get the (:nocontent) code instead
+# (an Approach S62 reports "has :getAppCourses" but crashes calling it).
+base.excludeAnnotations = nocontent
 
 gpsmap66.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap66.resourcePath)
 gpsmap67.resourcePath = resources-launcher-38x33;resources-nofit;$(gpsmap67.resourcePath)
@@ -143,3 +147,24 @@ marqcommander.resourcePath = resources-launcher-40x40;resources-fit;$(marqcomman
 venu441mm.resourcePath = resources-launcher-54x54;resources-fit;$(venu441mm.resourcePath)
 venu445mm.resourcePath = resources-launcher-65x65;resources-fit;$(venu445mm.resourcePath)
 vivoactive6.resourcePath = resources-launcher-54x54;resources-fit;$(vivoactive6.resourcePath)
+approachs7243mm.resourcePath = resources-launcher-60x60;resources-fit;$(approachs7243mm.resourcePath)
+approachs7247mm.resourcePath = resources-launcher-65x65;resources-fit;$(approachs7247mm.resourcePath)
+d2mach2pro.resourcePath = resources-launcher-65x65;resources-fit;$(d2mach2pro.resourcePath)
+edge1060.resourcePath = resources-launcher-62x62;resources-fit;$(edge1060.resourcePath)
+enduro4.resourcePath = resources-launcher-40x40;resources-fit;$(enduro4.resourcePath)
+etrextouch.resourcePath = resources-launcher-38x33;resources-nofit;$(etrextouch.resourcePath)
+fr70.resourcePath = resources-launcher-54x54;resources-fit;$(fr70.resourcePath)
+marq3.resourcePath = resources-launcher-65x65;resources-fit;$(marq3.resourcePath)
+venux1.resourcePath = resources-launcher-65x65;resources-fit;$(venux1.resourcePath)
+
+approachs60.excludeAnnotations = content
+approachs62.excludeAnnotations = content
+approachs7042mm.excludeAnnotations = content
+approachs7047mm.excludeAnnotations = content
+d2air.excludeAnnotations = content
+d2airx10.excludeAnnotations = content
+edge_1000.excludeAnnotations = content
+edge_520.excludeAnnotations = content
+fr735xt.excludeAnnotations = content
+oregon7xx.excludeAnnotations = content
+rino7xx.excludeAnnotations = content
