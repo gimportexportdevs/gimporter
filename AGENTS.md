@@ -83,10 +83,11 @@ The build uses split jungle include files:
 - `monkey-app.jungleinc`: App manifest reference
 - `monkey-widget.jungleinc`: Widget manifest reference
 
+There are no per-screen layouts: `gimporterView` draws the start view in code, relative to the screen size (round screens keep the text off the bezel, long titles wrap with `fitTextToArea` or get a smaller font, the Instinct subscreen shows the version). A new device therefore only needs a launcher icon size and FIT/GPX.
+
 Resources are organized by:
 - `resources-fit/` vs `resources-nofit/`: Device FIT file support capability
 - `resources-launcher-NxN/`: Device-specific icon sizes
-- `resources-round-NxN/`, `resources-rectangle-NxN/`, `resources-semiround-NxN/`: Screen shape layouts
 - `resources/strings/strings.xml`: English (default) UI strings; the language-neutral fallback for every locale
 - `resources-<lang>/strings/strings.xml`: Per-language translations (deu, fre, spa, ita, dut, por, pol, ces, rus, swe, fin, dan, nob, tur, gre, hun, ukr, zhs, zht, jpn, kor)
 

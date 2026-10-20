@@ -413,7 +413,8 @@ class gimporterApp extends App.AppBase {
             var type = data["type"] as Object?;
             var now = Time.now().value();
             if ("list".equals(type)) {
-                sendContentList(true);
+                // gexporter asks whenever gimporter starts: not worth a message
+                sendContentList(false);
             } else if ("delete".equals(type)) {
                 var items = $.deleteRequestItems(data, now);
                 if (items != null) {
@@ -467,6 +468,10 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function loadFingerprints() as Dictionary {
+        // Application.Storage needs API 2.4 (not on an Oregon 7xx)
+        if (!(App has :Storage)) {
+            return {} as Dictionary;
+        }
         var fps = Storage.getValue(FINGERPRINTS);
         return fps instanceof Dictionary ? fps as Dictionary : {} as Dictionary;
     }
@@ -477,7 +482,7 @@ class gimporterApp extends App.AppBase {
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
     function rememberFingerprint(content as PC.Content, fingerprint as String?) as Void {
-        if (fingerprint == null || fingerprint.length() == 0) {
+        if (fingerprint == null || fingerprint.length() == 0 || !(App has :Storage)) {
             return;
         }
         var fps = loadFingerprints();
@@ -516,6 +521,19 @@ class gimporterApp extends App.AppBase {
         mSending = false;
         if (mSendTimer != null) {
             mSendTimer.stop();
+        }
+        if (!(Comm has :transmit)) {
+            // e.g. Oregon 7xx (API 2.2): nothing can reach the phone, and a
+            // missing symbol cannot be caught. A port request falls back.
+            var portRequested = false;
+            for (var i = 0; i < mOutbox.size(); i++) {
+                portRequested = portRequested || ((mOutbox[i] as Array)[1] as Boolean);
+            }
+            mOutbox = [] as Array;
+            if (portRequested) {
+                fallbackToDefaultPort();
+            }
+            return;
         }
         while (mOutbox.size() > 0) {
             var entry = mOutbox[0] as Array;
@@ -608,7 +626,7 @@ class gimporterApp extends App.AppBase {
                 kept[key] = fps[key];
             }
         }
-        if (kept.size() != fps.size()) {
+        if (kept.size() != fps.size() && (App has :Storage)) {
             Storage.setValue(FINGERPRINTS, kept as Dictionary<Storage.KeyType, Storage.ValueType>);
         }
         System.println("Sending " + items.size() + " content items to the phone");
@@ -1432,10 +1450,26 @@ class gimporterApp extends App.AppBase {
 
 
 
+// Fonts for the status text, largest first: a long track title steps down
+// until it fits.
+const STATUS_FONTS = [GFX.FONT_MEDIUM, GFX.FONT_SMALL, GFX.FONT_TINY, GFX.FONT_XTINY] as Array<GFX.FontDefinition>;
+
+// The status text in at most this many lines, or null if it does not fit.
+function wrapStatus(text as String, font as GFX.FontDefinition, width as Number, height as Number) as String? {
+    if (GFX has :fitTextToArea) {
+        return GFX.fitTextToArea(text, font, width, height, false);
+    }
+    return text;
+}
+
+// Drawn in code rather than from a layout per screen size, so it adapts to
+// every display: round screens keep the text off the bezel, and long track
+// titles wrap or get a smaller font.
 class gimporterView extends Ui.View {
-    var st as Ui.Text?;
-    var ps as String or ResourceId = "";
     var app as gimporterApp;
+    var mAppName as String;
+    var mVersion as String;
+    var mPressStart as String;
     // the app's first view, rather than one pushed to show a download
     var mIsStartView as Boolean;
 
@@ -1443,30 +1477,67 @@ class gimporterView extends Ui.View {
         View.initialize();
         app = $.getApp();
         mIsStartView = isStartView;
+        mAppName = Ui.loadResource(Rez.Strings.AppName) as String;
+        mVersion = Ui.loadResource(Rez.Strings.AppVersion) as String;
+        mPressStart = Ui.loadResource(Rez.Strings.PressStart) as String;
     }
 
     function onShow() as Void {
         app.onViewVisible(mIsStartView);
     }
 
-    function onLayout(dc as GFX.Dc) as Void {
-        setLayout(Rez.Layouts.MainLayout(dc));
-        st = findDrawableById("status") as Ui.Text?;
-        ps = Ui.loadResource(Rez.Strings.PressStart) as String;
-    }
-
     function onUpdate(dc as GFX.Dc) as Void {
-        var label = st;
-        if (label != null) {
-            var status = app.getStatus();
-            if (status.equals("")) {
-                label.setText(ps);
-            } else {
-                label.setText(status);
-            }
+        var w = dc.getWidth();
+        var h = dc.getHeight();
+        dc.setColor(GFX.COLOR_WHITE, GFX.COLOR_BLACK);
+        dc.clear();
+
+        var round = System.getDeviceSettings().screenShape != System.SCREEN_SHAPE_RECTANGLE;
+        var center = GFX.TEXT_JUSTIFY_CENTER | GFX.TEXT_JUSTIFY_VCENTER;
+        // round screens are narrow near the top and bottom
+        var edge = round ? 0.14 : 0.08;
+        var bottom = (h * (1 - edge)).toNumber();
+        var top = (h * edge).toNumber();
+        // The Instinct's round subscreen covers the top right corner: it
+        // shows the version, the text starts below it.
+        var subscreen = (Ui has :getSubscreen) ? Ui.getSubscreen() : null;
+        if (subscreen != null) {
+            var sx = subscreen.x as Number;
+            var sy = subscreen.y as Number;
+            var sw = subscreen.width as Number;
+            var sh = subscreen.height as Number;
+            dc.drawText(sx + sw / 2, sy + sh / 2, GFX.FONT_XTINY, mVersion, center);
+            top = sy + sh;
+            bottom = h;
+        } else {
+            dc.drawText(w / 2, top, GFX.FONT_XTINY, mAppName, center);
+            dc.drawText(w / 2, bottom, GFX.FONT_XTINY, mVersion, center);
         }
 
-        View.onUpdate(dc);
+        var status = app.getStatus();
+        var text = status instanceof String ? status as String : Ui.loadResource(status as ResourceId) as String;
+        if (text.equals("")) {
+            text = mPressStart;
+        }
+        // the widest band of a round screen is the middle
+        var areaW = (w * (round ? 0.78 : 0.92)).toNumber();
+        var lineH = dc.getFontHeight(GFX.FONT_XTINY);
+        var areaTop = subscreen != null ? top : top + lineH / 2;
+        var areaH = (subscreen != null ? bottom - lineH / 4 : bottom - lineH / 2) - areaTop;
+        var areaMid = areaTop + areaH / 2;
+        var font = STATUS_FONTS[STATUS_FONTS.size() - 1];
+        var fitted = null;
+        for (var i = 0; i < STATUS_FONTS.size() && fitted == null; i++) {
+            font = STATUS_FONTS[i];
+            fitted = $.wrapStatus(text, font, areaW, areaH);
+            if (fitted != null && !(GFX has :fitTextToArea) && dc.getTextWidthInPixels(text, font) > areaW) {
+                fitted = null;  // no wrapping before API 3.1: try a smaller font
+            }
+        }
+        if (fitted == null) {
+            fitted = (GFX has :fitTextToArea) ? GFX.fitTextToArea(text, font, areaW, areaH, true) : text;
+        }
+        dc.drawText(w / 2, areaMid, font, fitted, center);
     }
 }
 
