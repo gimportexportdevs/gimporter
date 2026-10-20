@@ -193,13 +193,17 @@ function testLocationMessageMalformed(logger as Test.Logger) as Boolean {
 (:test)
 function testAppendContent(logger as Test.Logger) as Boolean {
     var items = [] as Array;
-    $.appendContent(items, "course", TestHelpers.fakeIterator(["Tour", "Runde"]));
-    $.appendContent(items, "waypoint", TestHelpers.fakeIterator(["Dom"]));
+    var fps = { $.contentKey("course", 101) => "abc123" } as Dictionary;
+    $.appendContent(items, "course", TestHelpers.fakeIterator(["Tour", "Runde"]), fps);
+    $.appendContent(items, "waypoint", TestHelpers.fakeIterator(["Dom"]), fps);
     Test.assertEqual(items.size(), 3);
     var first = items[0] as Array<Object>;
     Test.assertEqual(first[0], "course");
     Test.assertEqual(first[1], "Tour");
     Test.assertEqual(first[2], 101);
+    Test.assertEqual(first[3], "abc123");
+    // no fingerprint: imported before fingerprints existed
+    Test.assertEqual((items[1] as Array<Object>)[3], "");
     var last = items[2] as Array<Object>;
     Test.assertEqual(last[0], "waypoint");
     Test.assertEqual(last[1], "Dom");
@@ -213,7 +217,7 @@ function testAppendContentIsCapped(logger as Test.Logger) as Boolean {
         names.add("T" + i);
     }
     var items = [] as Array;
-    $.appendContent(items, "course", TestHelpers.fakeIterator(names));
+    $.appendContent(items, "course", TestHelpers.fakeIterator(names), {} as Dictionary);
     Test.assertEqual(items.size(), MAX_CONTENT_ITEMS);
     return true;
 }
@@ -237,5 +241,21 @@ function testDeleteRequestItems(logger as Test.Logger) as Boolean {
     Test.assert($.deleteRequestItems({ "type" => "delete", "items" => [["course", "101"]], "time" => now }, now) == null);
     Test.assert($.deleteRequestItems({ "type" => "delete", "items" => [["course"]], "time" => now }, now) == null);
     Test.assert($.deleteRequestItems({ "type" => "delete", "time" => now }, now) == null);
+    return true;
+}
+
+(:test)
+function testTrackMessage(logger as Test.Logger) as Boolean {
+    var now = 1790000000;
+    var msg = { "type" => "track", "url" => "Tour.gpx", "title" => "Tour", "port" => 22222, "time" => now };
+    Test.assert($.isTrackMessage(msg, now));
+    // left in the mailbox for a day
+    msg["time"] = now - 86400;
+    Test.assert(!$.isTrackMessage(msg, now));
+    // no usable port
+    Test.assert(!$.isTrackMessage({ "type" => "track", "url" => "Tour.gpx", "title" => "Tour", "port" => 0, "time" => now }, now));
+    Test.assert(!$.isTrackMessage({ "type" => "track", "url" => "Tour.gpx", "title" => "Tour", "time" => now }, now));
+    // a location is not a track
+    Test.assert(!$.isTrackMessage({ "type" => "location", "title" => "Dom", "lat" => "1.0", "lon" => "2.0", "time" => now }, now));
     return true;
 }

@@ -1,6 +1,7 @@
 import Toybox.Lang;
 
 using Toybox.Application as App;
+using Toybox.Application.Storage;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
 using Toybox.PersistedContent as PC;
@@ -98,19 +99,65 @@ function isLocationMessage(data as Object?, now as Number) as Boolean {
     return $.isFreshMessage(data, now);
 }
 
+// A phone message {"type": "track", "url", "title", "port", "time"}: the
+// phone asks to download a track now. "port" is gexporter's server port,
+// so no port handshake is needed.
+function isTrackMessage(data as Object?, now as Number) as Boolean {
+    if (!(data instanceof Dictionary)) {
+        return false;
+    }
+    var type = data["type"];
+    var port = data["port"];
+    if (!(type instanceof String) || !type.equals("track")
+        || !(data["url"] instanceof String) || !(data["title"] instanceof String)
+        || !(port instanceof Number) || port <= 0 || port > 65535) {
+        return false;
+    }
+    return $.isFreshMessage(data, now);
+}
+
 // Content kinds the phone can list and delete. remove() only works for
 // content gimporter created itself, which is what getApp*() returns.
 const CONTENT_KINDS = ["course", "track", "route", "waypoint"] as Array<String>;
 // Keeps the reply to the phone within the BLE message size.
 const MAX_CONTENT_ITEMS = 100;
 
-// Append [kind, name, id] for each content object of the iterator.
-function appendContent(items as Array, kind as String, it as PC.Iterator) as Void {
+// Storage key of the {"<kind>:<id>" => fingerprint} map. gexporter sends a
+// fingerprint of each track and location (a hash of its content); gimporter
+// remembers which content on the watch came from it, so the phone can tell
+// what is on the watch even when two tracks share a name.
+const FINGERPRINTS = "fingerprints";
+
+function contentKey(kind as String, id as Number) as String {
+    return kind + ":" + id;
+}
+
+// Append [kind, name, id, fingerprint] for each content object of the
+// iterator; the fingerprint is "" for content imported before fingerprints.
+function appendContent(items as Array, kind as String, it as PC.Iterator, fingerprints as Dictionary) as Void {
     var c = it.next() as PC.Course?;
     while (c != null && items.size() < MAX_CONTENT_ITEMS) {
-        items.add([kind, c.getName(), c.getId()]);
+        var fp = fingerprints[$.contentKey(kind, c.getId())];
+        items.add([kind, c.getName(), c.getId(), fp instanceof String ? fp : ""]);
         c = it.next() as PC.Course?;
     }
+}
+
+// The content kind of a PersistedContent object, as used in messages.
+// Some devices lack some of the classes at runtime although the compiler
+// accepts them (a MARQ crashed on "Could not find symbol 'Track'"), so
+// check with "has" before instanceof.
+function kindOf(content as PC.Content) as String {
+    if ((PC has :Waypoint) && content instanceof PC.Waypoint) {
+        return "waypoint";
+    }
+    if ((PC has :Track) && content instanceof PC.Track) {
+        return "track";
+    }
+    if ((PC has :Route) && content instanceof PC.Route) {
+        return "route";
+    }
+    return "course";
 }
 
 function findContentById(it as PC.Iterator, id as Number) as PC.Course? {
@@ -211,6 +258,9 @@ class gimporterApp extends App.AppBase {
     var mPortFallbackTimer as TIME.Timer?;  // Timer for delayed fallback after BLE disruption
     var mPortRequestPending as Boolean = false;  // One-shot gate: port resolution may dispatch only once per request
     var mDownloadPending as Boolean = false;  // Download in flight; cleared when the user backs out
+    var mPushedTrack as Dictionary? = null;  // Track the phone asked for, started by mPushTimer
+    var mPendingFingerprint as String? = null;  // gexporter's fingerprint of the track being imported
+    var mPushTimer as TIME.Timer?;
 
     function initialize() {
         AppBase.initialize();
@@ -255,15 +305,23 @@ class gimporterApp extends App.AppBase {
             var type = data["type"] as Object?;
             var now = Time.now().value();
             if ("list".equals(type)) {
-                sendContentList();
+                sendContentList(true);
             } else if ("delete".equals(type)) {
                 var items = $.deleteRequestItems(data, now);
                 if (items != null) {
                     deleteContent(items);
-                    sendContentList();
+                    sendContentList(true);
                 } else {
                     System.println("Ignoring stale or malformed delete request");
                 }
+            } else if ($.isTrackMessage(data, now)) {
+                // Messages queued while the app was closed arrive from
+                // getInitialView(), before there is a view to push onto.
+                mPushedTrack = data;
+                if (mPushTimer == null) {
+                    mPushTimer = new TIME.Timer();
+                }
+                mPushTimer.start(method(:onPushedTrack), 300, false);
             } else if ($.isLocationMessage(data, now)) {
                 navigateToLocation(data);
             } else {
@@ -272,6 +330,46 @@ class gimporterApp extends App.AppBase {
             return;
         }
         onPortReceived(msg);
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function onPushedTrack() as Void {
+        var track = mPushedTrack;
+        mPushedTrack = null;
+        if (track == null) {
+            return;
+        }
+        if (mDownloadPending || mPortRequestPending) {
+            System.println("Busy, ignoring pushed track");
+            return;
+        }
+        mServerPort = track["port"] as Number;
+        var fp = track["hash"];
+        downloadTrack(track["url"] as String, track["title"] as String, fp instanceof String ? fp : null);
+    }
+
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function loadFingerprints() as Dictionary {
+        var fps = Storage.getValue(FINGERPRINTS);
+        return fps instanceof Dictionary ? fps as Dictionary : {} as Dictionary;
+    }
+
+    // Remember that this content on the watch came from gexporter's
+    // track or location with this fingerprint.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function rememberFingerprint(content as PC.Content, fingerprint as String?) as Void {
+        if (fingerprint == null || fingerprint.length() == 0) {
+            return;
+        }
+        var fps = loadFingerprints();
+        fps[$.contentKey($.kindOf(content), content.getId())] = fingerprint;
+        Storage.setValue(FINGERPRINTS, fps as Dictionary<Storage.KeyType, Storage.ValueType>);
     }
 
     function appContent(kind as String) as PC.Iterator? {
@@ -294,17 +392,32 @@ class gimporterApp extends App.AppBase {
     // disableGlanceCheck: references foreground-only symbols; never called in
     // the glance scope (the class itself is (:glance), see class comment)
     (:typecheck(disableGlanceCheck))
-    function sendContentList() as Void {
+    function sendContentList(showStatus as Boolean) as Void {
         var items = [] as Array;
+        var fps = loadFingerprints();
         for (var i = 0; i < CONTENT_KINDS.size(); i++) {
             var it = appContent(CONTENT_KINDS[i]);
             if (it != null) {
-                $.appendContent(items, CONTENT_KINDS[i], it);
+                $.appendContent(items, CONTENT_KINDS[i], it, fps);
             }
         }
+        // forget fingerprints of content deleted on the watch meanwhile
+        var kept = {} as Dictionary;
+        for (var i = 0; i < items.size(); i++) {
+            var item = items[i] as Array;
+            var key = $.contentKey(item[0] as String, item[2] as Number);
+            if (fps.hasKey(key)) {
+                kept[key] = fps[key];
+            }
+        }
+        if (kept.size() != fps.size()) {
+            Storage.setValue(FINGERPRINTS, kept as Dictionary<Storage.KeyType, Storage.ValueType>);
+        }
         System.println("Sending " + items.size() + " content items to the phone");
-        status = Rez.Strings.PhoneManaging;
-        Ui.requestUpdate();
+        if (showStatus) {
+            status = Rez.Strings.PhoneManaging;
+            Ui.requestUpdate();
+        }
         var reply = { "type" => "content", "items" => items } as Dictionary<Comm.TransmitKeyType, Comm.TransmitType>;
         Comm.transmit(reply, null, new TransmitLogger());
     }
@@ -652,8 +765,20 @@ class gimporterApp extends App.AppBase {
         }
 
         var track = trackList[index] as Dictionary;
-        var trackurl = track["url"] as String;
-        trackToStart = track["title"] as String;
+        var fp = track["hash"];
+        downloadTrack(track["url"] as String, track["title"] as String, fp instanceof String ? fp : null);
+    }
+
+    // Download a track from gexporter and start it; from the track list or
+    // when the phone pushes one. A relative url is resolved against
+    // mServerPort.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function downloadTrack(url as String, title as String, fingerprint as String?) as Void {
+        var trackurl = url;
+        trackToStart = title;
+        mPendingFingerprint = fingerprint;
 
         if ((trackurl.length() < 7) || (!"http://".equals(trackurl.substring(0, 7)))) {
             trackurl = "http://127.0.0.1:" + mServerPort + "/" + trackurl;
@@ -740,8 +865,12 @@ class gimporterApp extends App.AppBase {
             return;
         }
 
+        var fp = track["hash"];
+        rememberFingerprint(waypoint, fp instanceof String ? fp : null);
         status = Rez.Strings.PressStart;
         Ui.requestUpdate();
+        // lets the phone mark the location as on the watch
+        sendContentList(false);
         // The system asks which activity to navigate with.
         exitInto(waypoint.toIntent());
     }
@@ -790,6 +919,7 @@ class gimporterApp extends App.AppBase {
             // the cast is only to satisfy the type checker.
             var course = courses[index] as PC.Course;
             System.println("Launching similar course: " + course.getName());
+            rememberFingerprint(course, mPendingFingerprint);
             exitInto(course.toIntent());
             mSimilarCourses = null;
         }
@@ -835,6 +965,9 @@ class gimporterApp extends App.AppBase {
 
             if (download != null) {
                 Ui.requestUpdate();
+                rememberFingerprint(download, mPendingFingerprint);
+                // lets the phone mark the track as on the watch
+                sendContentList(false);
                 exitInto(download.toIntent());
                 return;
             }
@@ -980,6 +1113,8 @@ class gimporterApp extends App.AppBase {
             // FIXME: Garmin
             // I can't do System.exitTo(course.toIntent())
             // It causes the Fenix5 to be in a strange state
+            // already imported before: still the content of this track
+            rememberFingerprint(startcourse, mPendingFingerprint);
             exitInto(startcourse.toIntent()); // workaround
             return true;
         } else if (partialMatches.size() > 0) {
