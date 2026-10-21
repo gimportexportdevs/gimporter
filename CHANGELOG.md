@@ -1,5 +1,28 @@
 # Changelog
 
+## [7.4.0](https://github.com/gimportexportdevs/gimporter/compare/v7.3.0...v7.4.0) (2026-10-21)
+
+
+### Features
+
+* ask gexporter for shared locations in the track list ([c7fd681](https://github.com/gimportexportdevs/gimporter/commit/c7fd6816c34fb115f43e52d7100493be47334c7e))
+* download tracks pushed from the phone and remember fingerprints ([3919b28](https://github.com/gimportexportdevs/gimporter/commit/3919b28f7ad7a1db7122a436b0a82ddd26aeac02))
+* let the phone list and delete gimporter's content ([cee46ac](https://github.com/gimportexportdevs/gimporter/commit/cee46ac430e2654282f5f69ca373761d4c063348))
+* offer tracks pushed from the phone for starting instead of starting them ([b723484](https://github.com/gimportexportdevs/gimporter/commit/b723484a5ba212e86c023153c8d9089041d11439))
+* receive locations pushed from the phone ([5790649](https://github.com/gimportexportdevs/gimporter/commit/579064921bf4dddd9ebe20637bd8995a4379d5f4))
+* report the app's state to the phone ([5fbb6d8](https://github.com/gimportexportdevs/gimporter/commit/5fbb6d8835a1e9330e59a58acf82f34e4a0ad209))
+* save shared locations and navigate to them ([764f224](https://github.com/gimportexportdevs/gimporter/commit/764f2246dff76b4260bb4170d757c59a5a9dc16f))
+* scrolling track lists, nine new devices, and fixes found testing every device ([635ec8a](https://github.com/gimportexportdevs/gimporter/commit/635ec8a1d6ea0e5875f05e0c653dc9ba027ebd50))
+
+
+### Bug Fixes
+
+* do not store a track twice when it is sent again ([2785104](https://github.com/gimportexportdevs/gimporter/commit/278510482a678a5787263cf107ce8f8a02ace532))
+* fit the start view to every screen and run on API 2.x devices again ([505d5a9](https://github.com/gimportexportdevs/gimporter/commit/505d5a97bb68bbf2d093f2e8a51316f6c446b23d))
+* leave the app only once when tracks are pushed in quick succession ([da36f1d](https://github.com/gimportexportdevs/gimporter/commit/da36f1d9e2d7e8ee2a97fb3aa74bef87d7dc5301))
+* return to the start view after backing out of the activity prompt ([d65b2a1](https://github.com/gimportexportdevs/gimporter/commit/d65b2a19cafbf208bd504c9221bb969a9b4092a6))
+* send the port request through the outbox ([b84fc8a](https://github.com/gimportexportdevs/gimporter/commit/b84fc8ac5078ea1249f6fd5f336dfda2be07237d))
+
 ## [7.3.0](https://github.com/gimportexportdevs/gimporter/compare/v7.2.0...v7.3.0) (2026-09-21)
 
 
