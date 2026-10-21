@@ -215,6 +215,18 @@ function kindOf(content as PC.Content) as String {
     return "course";
 }
 
+// The "<kind>:<id>" keys of the content imported with this fingerprint.
+function keysWithFingerprint(fingerprints as Dictionary, fingerprint as String) as Array<String> {
+    var keys = [] as Array<String>;
+    var all = fingerprints.keys();
+    for (var i = 0; i < all.size(); i++) {
+        if (fingerprint.equals(fingerprints[all[i]] as Object?)) {
+            keys.add(all[i] as String);
+        }
+    }
+    return keys;
+}
+
 function findContentById(it as PC.Iterator, id as Number) as PC.Course? {
     var c = it.next() as PC.Course?;
     while (c != null) {
@@ -488,6 +500,32 @@ class gimporterApp extends App.AppBase {
         return fps instanceof Dictionary ? fps as Dictionary : {} as Dictionary;
     }
 
+    // The content on the watch imported with this fingerprint, if any.
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
+    function findContentByFingerprint(fingerprint as String?) as PC.Course? {
+        if (fingerprint == null || fingerprint.length() == 0) {
+            return null;
+        }
+        var keys = $.keysWithFingerprint(loadFingerprints(), fingerprint);
+        for (var i = 0; i < keys.size(); i++) {
+            var sep = keys[i].find(":");
+            if (sep == null) {
+                continue;
+            }
+            var it = appContent(keys[i].substring(0, sep) as String);
+            var id = (keys[i].substring(sep + 1, keys[i].length()) as String).toNumber();
+            if (it != null && id != null) {
+                var found = $.findContentById(it, id);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     // Remember that this content on the watch came from gexporter's
     // track or location with this fingerprint.
     // disableGlanceCheck: references foreground-only symbols; never called in
@@ -600,6 +638,9 @@ class gimporterApp extends App.AppBase {
         sendNext();
     }
 
+    // disableGlanceCheck: references foreground-only symbols; never called in
+    // the glance scope (the class itself is (:glance), see class comment)
+    (:typecheck(disableGlanceCheck))
     function appContent(kind as String) as PC.Iterator? {
         if (!$.hasContentApi()) {
             return null;
@@ -1014,6 +1055,15 @@ class gimporterApp extends App.AppBase {
         trackToStart = title;
         mPendingFingerprint = fingerprint;
 
+        // Already on the watch (sent twice, or chosen again from the list):
+        // offer or start that one instead of storing a second copy.
+        var existing = findContentByFingerprint(fingerprint);
+        if (existing != null) {
+            System.println("Already on the watch: " + existing.getName());
+            finishImport(existing.toIntent());
+            return;
+        }
+
         if ((trackurl.length() < 7) || (!"http://".equals(trackurl.substring(0, 7)))) {
             trackurl = "http://127.0.0.1:" + mServerPort + "/" + trackurl;
         }
@@ -1212,7 +1262,13 @@ class gimporterApp extends App.AppBase {
             exitInto(intent);
             return;
         }
+        var wasReady = mState == STATE_READY_TO_START;
         setState(STATE_READY_TO_START);
+        if (wasReady) {
+            // setState() only reports a change; the phone still has to
+            // hear which track is offered now
+            sendStatus("imported", trackToStart);
+        }
         mReadyIntent = intent;
         var title = trackToStart;
         // the view adds "Press Start" below the title

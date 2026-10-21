@@ -296,3 +296,13 @@ function testStaleCallbacksAreIgnored(logger as Test.Logger) as Boolean {
     Test.assert(app.getTracks() == null);
     return true;
 }
+
+(:test)
+function testKeysWithFingerprint(logger as Test.Logger) as Boolean {
+    var fps = { "course:101" => "aaaa", "waypoint:7" => "bbbb", "course:102" => "aaaa" } as Dictionary;
+    var keys = $.keysWithFingerprint(fps, "aaaa");
+    Test.assertEqual(keys.size(), 2);
+    Test.assert(keys.indexOf("course:101") >= 0 && keys.indexOf("course:102") >= 0);
+    Test.assertEqual($.keysWithFingerprint(fps, "cccc").size(), 0);
+    return true;
+}
