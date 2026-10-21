@@ -45,15 +45,29 @@ jobs:
           Xvfb "$DISPLAY" -screen 0 1280x1024x24 &
           /connectiq/bin/simulator > /dev/null 2>&1 &
           sleep 5
-          make test DEVICE=fenix6 SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
+          # One device per kind of special case:
+          #   oregon7xx    API 2.2: no Communications.transmit, no Storage
+          #   approachs62  built without the content API ((:nocontent))
+          #   d2charlie    API 3.0: no fitTextToArea, gimporter wraps itself
+          #   instinct2    subscreen
+          #   fenix6       API 3.4, the long-standing reference
+          #   fenix847mm   current AMOLED watch, API 6
+          #   edge1050     rectangular Edge
+          for device in oregon7xx approachs62 d2charlie instinct2 fenix6 fenix847mm edge1050; do
+            echo "::group::unit tests on $device"
+            make test DEVICE=$device SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
+            echo "::endgroup::"
+          done
 
-      - name: Build for all devices
+      - name: Build the store packages (all devices)
+        # One compiler run per variant builds every device of the manifest,
+        # exactly what is uploaded to the Connect IQ store.
         run: |
-          make -j"$(nproc)" buildall SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
+          make package SDK_HOME=/connectiq PRIVATE_KEY=/tmp/developer_key.der
 
-      - name: Upload build artifacts
+      - name: Upload the store packages
         uses: actions/upload-artifact@v4
         with:
-          name: gimporter-builds
-          path: bin/*.prg
+          name: gimporter-packages
+          path: bin/*.iq
           retention-days: 7
