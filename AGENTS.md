@@ -44,12 +44,14 @@ Configuration (all overridable via environment or a gitignored `properties.local
 ### Source Files
 
 - **gimporterApp.mc**: Main application containing:
-  - `gimporterApp`: App class handling HTTP communication, course downloads, and PersistedContent imports
-  - `gimporterView`/`gimporterDelegate`: Main view and input handling
-  - `PortRequestListener`: Handles Android companion app communication
-  - `SimilarCourseChooser`/`SimilarCourseChooserDelegate`: Menu for selecting from similar course matches
+  - `gimporterApp`: App class and state machine (see Communication Flow), HTTP communication, course downloads, PersistedContent imports, messages to and from gexporter
+  - `OutboxListener`: messages to the phone go through an outbox that sends one at a time (with a confirmation timeout), so a slow `Comm.transmit` cannot stall or reorder them
+  - `gimporterView`/`gimporterDelegate`: Main view (drawn in code) and input handling
+  - `SimilarCourseChooser`/`SimilarCourseChooserDelegate`: classic Menu for selecting from similar course matches
 
-- **TrackChooser.mc**: Paginated track list UI (15 items per page with "MORE" option)
+- **TrackChooser.mc**: Track list and similar-course list. `pushTrackChooser`/`pushSimilarCourseChooser` use a scrolling `Menu2` where the device has it and fall back to the classic paginated `Menu` (15 items per page with "MORE") on old devices
+
+- **gimporterTest.mc**: Unit tests (`(:test)`), run by `make test`
 
 - **GlanceView.mc**: Glance shown in the widget carousel on glance-capable
   devices (app name + FIT/GPX mode + version). The glance execution scope
@@ -69,6 +71,16 @@ Configuration (all overridable via environment or a gitignored `properties.local
 4. Downloads selected track as GPX or FIT (device-dependent, set via `Rez.Strings.GPXorFIT`)
 5. Imports via `PersistedContent` API, searches for matching course in courses/tracks/routes
 6. If exact match found, launches course; if similar matches found, presents selection menu
+
+Besides this pull flow, gexporter (20.2+) pushes: a tapped track (`"type": "track"`) or a shared place (`"type": "location"`) arrives as a phone message. gimporter downloads the track (or saves the place as a waypoint), shows its name with "Press Start", and Start hands it to the native course view or navigation via `exitTo`. Until Start, further pushes replace it. A content fingerprint keeps a track that is sent twice from being stored twice. The phone can also ask for and delete gimporter's content on the watch.
+
+The app is a state machine (`mState`: IDLE, WAITING_FOR_PHONE, REQUESTING_PORT, LOADING_LIST, DOWNLOADING, CHOOSING_SIMILAR, READY_TO_START, LEAVING). `setState()` is the only place that changes it, and it reports the state to the phone ("importing", "imported", "started"; "ready" when idle), which drives gexporter's status line. Callbacks of an earlier download check the state and are ignored when it moved on.
+
+### Old devices
+
+- Oregon 7xx (API 2.2) has neither `Communications.transmit` nor `Application.Storage`: everything that uses them is behind `has` checks and the app falls back to the pull flow.
+- On some devices (`approachs60/62/7042mm/7047mm`, `d2air`, `d2airx10`, `edge_1000`, `edge_520`, `fr735xt`, `oregon7xx`, `rino7xx`) the content API (`getAppCourses` etc.) crashes even behind a `has` check. Their builds exclude it with the `(:content)`/`(:nocontent)` annotations (`excludeAnnotations` in `monkey-base.jungleinc` and `monkey.jungle`); a new device of that kind goes on this list.
+- Before API 3.1 there is no `fitTextToArea`; `wrapStatus` wraps the start screen text itself.
 
 ### Build Configuration
 
@@ -102,6 +114,33 @@ Expected build warning: monkeyc emits `String id '<X>' undefined for language 'h
 ## Key Implementation Details
 
 - Course name normalization strips `_course.fit`, `.fit`, `.gpx` suffixes for matching
-- Port request has 1-second timeout before falling back to default port 22222
-- Track pagination: 15 items per page, uses Symbol identifiers `:ITEM_0` through `:ITEM_15`
+- Port request has 1-second timeout (counted from when the outbox actually sends it) before falling back to default port 22222
+- Classic menu pagination: 15 items per page, uses Symbol identifiers `:ITEM_0` through `:ITEM_15`
+
+## Testing
+
+- `make test DEVICE=<device>` runs the unit tests in the simulator. Test builds do not report "ready" to the phone, so they do not trigger the simulator's "no data connection" dialog.
+- CI (`.github/workflows/build.yml`) runs the unit tests on one device per special case — `oregon7xx` (API 2.2, no transmit/Storage), `approachs62` (`(:nocontent)`), `d2charlie` (no `fitTextToArea`), `instinct2` (subscreen), `fenix6` (reference), `fenix847mm` (current AMOLED), `edge1050` (rectangular Edge) — and builds the store packages with `make package` (the `.iq` files are the CI artifact). Extend that list when a new kind of special case appears, rather than running `buildall` in CI.
+- The CI image (`matco/connectiq-tester`) lags behind the SDK's device list; `.github/scripts/prune-unknown-devices.sh` drops devices it does not know yet before building.
+- The whole phone-to-watch flow can run against the simulator with a gexporter debug build in simulator mode, see `gexporter/CLAUDE.md`. Test changes to the transfer on a real watch before release.
+
+## Compatibility with gexporter
+
+All combinations of old and new versions must work:
+- New gimporter, old gexporter: the pull flow (track list) works as before.
+- Old gimporter, new gexporter: gexporter notices that gimporter does not answer the new messages and tells the user to pick the track from the list; it lists places only for a gimporter that asks for them (`"locations" => "1"` in the list request).
+
+## Releasing
+
+1. release-please opens a "chore(master): release x.y.z" PR from the conventional commits; merging it tags the release and bumps the version.
+2. Build the store packages: `make package` (or take the `.iq` files from the CI artifact).
+3. Upload both in the Connect IQ developer dashboard (https://apps.garmin.com/developer/dashboard): the app (`gimporter-app.iq`) and the widget (`gimporter-widget.iq`), each via "Neue Version hochladen".
+4. "What's new" in the store: only what users of the last published version notice, in user language; keep the history of earlier versions below the new entry. Descriptions, screenshots and the device icons are edited via "Details bearbeiten".
+
+## Where users report problems
+
+Look there now and then and before a release; answer in the reporter's language, and show the text to the maintainer before posting (it is public):
+- GitHub issues: https://github.com/gimportexportdevs/gimporter/issues (and https://github.com/gimportexportdevs/gexporter/issues — many watch problems are reported there)
+- Garmin forum support thread: https://forums.garmin.com/developer/connect-iq/f/showcase/5150/gimporter-gexporter---import-fit-gpx-courses-from-your-android-phone
+- Connect IQ store reviews: app https://apps.garmin.com/apps/de11adc4-fdbb-40b5-86ac-7f93b47ea5bb, widget https://apps.garmin.com/apps/fac50ef3-77b2-466c-9f4f-4dcb2feb49a3
 - App exists in two variants: watch-app and widget (widget manifest auto-generated from app manifest)
