@@ -424,7 +424,12 @@ class gimporterApp extends App.AppBase {
         if (Comm has :registerForPhoneAppMessages) {
             Comm.registerForPhoneAppMessages(method(:onPhoneMessage));
         }
-        sendStatus("ready", null);
+        // Not in a unit test run: the simulator starts the app there too,
+        // and with BLE "connected" but no phone it blocks on a dialog
+        // (TestHelpers exists only in test builds).
+        if (!($ has :TestHelpers)) {
+            sendStatus("ready", null);
+        }
         return [ new gimporterView(true), new gimporterDelegate() ];
     }
 
