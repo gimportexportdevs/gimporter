@@ -187,13 +187,22 @@ function contentKey(kind as String, id as Number) as String {
     return kind + ":" + id;
 }
 
+// The name of a course, track, route or waypoint, "" if it has none: some
+// Edge devices return null for stored content without a name.
+// (:glance): called from methods of the (:glance) app class.
+(:glance)
+function contentName(content as Object) as String {
+    var name = (content as PC.Course).getName() as String?;
+    return name == null ? "" : name;
+}
+
 // Append [kind, name, id, fingerprint] for each content object of the
 // iterator; the fingerprint is "" for content imported before fingerprints.
 function appendContent(items as Array, kind as String, it as PC.Iterator, fingerprints as Dictionary) as Void {
     var c = it.next() as PC.Course?;
     while (c != null && items.size() < MAX_CONTENT_ITEMS) {
         var fp = fingerprints[$.contentKey(kind, c.getId())];
-        items.add([kind, c.getName(), c.getId(), fp instanceof String ? fp : ""]);
+        items.add([kind, $.contentName(c), c.getId(), fp instanceof String ? fp : ""]);
         c = it.next() as PC.Course?;
     }
 }
@@ -280,8 +289,8 @@ function findWaypoint(it as PC.Iterator, name as String) as PC.Waypoint? {
     var prefixMatch = null;
     var wp = it.next() as PC.Waypoint?;
     while (wp != null) {
-        var wpName = wp.getName();
-        if (wpName.equals(name)) {
+        var wpName = $.contentName(wp);
+        if (wpName.length() > 0 && wpName.equals(name)) {
             return wp;
         }
         if (wpName.length() > 0 && name.find(wpName) == 0) {
@@ -1172,7 +1181,8 @@ class gimporterApp extends App.AppBase {
         var it = PC.getAppWaypoints();
         var wp = it.next() as PC.Waypoint?;
         while (wp != null) {
-            if (wp.getName().equals(name) && (wp has :remove)) {
+            var wpName = $.contentName(wp);
+            if (wpName.length() > 0 && wpName.equals(name) && (wp has :remove)) {
                 stale.add(wp);
             }
             wp = it.next() as PC.Waypoint?;
@@ -1467,7 +1477,11 @@ class gimporterApp extends App.AppBase {
             if (course == null) {
                 break;
             }
-            var coursename = (course as PC.Course).getName();
+            var coursename = $.contentName(course as PC.Course);
+            if (coursename.length() == 0) {
+                // no name (some Edge devices): "" would prefix-match any track
+                continue;
+            }
             var normalizedCourseName = normalizeName(coursename);
             var clen = normalizedCourseName.length();
 
