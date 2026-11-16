@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.5.0](https://github.com/gimportexportdevs/gimporter/compare/v7.4.0...v7.5.0) (2026-11-16)
+
+
+### Features
+
+* support the Edge Explore 3 and Edge Explore 3 Plus ([#39](https://github.com/gimportexportdevs/gimporter/issues/39)) ([fff3370](https://github.com/gimportexportdevs/gimporter/commit/fff3370a8ef2e5a09f7b4f9d8c6d08780e65b993))
+
+
+### Bug Fixes
+
+* do not crash on courses and places without a name ([#40](https://github.com/gimportexportdevs/gimporter/issues/40)) ([29e6ff8](https://github.com/gimportexportdevs/gimporter/commit/29e6ff8646d02b2e7723de27e45640cdc079dd0a))
+
 ## [7.4.0](https://github.com/gimportexportdevs/gimporter/compare/v7.3.0...v7.4.0) (2026-10-21)
 
 
