@@ -8,15 +8,16 @@ using Toybox.PersistedContent as PC;
 // device, but searchCourse()/findWaypoint() only call next() and getName().
 (:test)
 class FakeContent {
-    var mName as String;
+    var mName as String?;
     var mId as Number;
 
-    function initialize(name as String, id as Number) {
+    // name null: some Edge devices store content without a name
+    function initialize(name as String?, id as Number) {
         mName = name;
         mId = id;
     }
 
-    function getName() as String {
+    function getName() as String? {
         return mName;
     }
 
@@ -30,7 +31,7 @@ class FakeIterator {
     var mItems as Array<FakeContent>;
     var mPos as Number = 0;
 
-    function initialize(names as Array<String>) {
+    function initialize(names as Array<String?>) {
         mItems = [] as Array<FakeContent>;
         for (var i = 0; i < names.size(); i++) {
             // ids 101, 102, ... so they are not confused with indices
@@ -50,13 +51,13 @@ class FakeIterator {
 // Helpers live in a module: a (:test) function at top level would be run as a test.
 (:test)
 module TestHelpers {
-    function fakeIterator(names as Array<String>) as PC.Iterator {
+    function fakeIterator(names as Array<String?>) as PC.Iterator {
         return new FakeIterator(names) as Object as PC.Iterator;
     }
 
     // "" for no content, so the result can go straight into assertEqual()
     function nameOf(content as Object?) as String {
-        return content == null ? "" : (content as FakeContent).getName();
+        return content == null ? "" : $.contentName(content);
     }
 }
 
@@ -119,6 +120,15 @@ function testFindWaypointNone(logger as Test.Logger) as Boolean {
 }
 
 (:test)
+function testFindWaypointUnnamed(logger as Test.Logger) as Boolean {
+    // Edge 1060: a stored waypoint without a name crashed the search
+    var wp = $.findWaypoint(TestHelpers.fakeIterator([null, "Stephansdom"] as Array<String?>), "Stephansdom");
+    Test.assertEqual(TestHelpers.nameOf(wp), "Stephansdom");
+    Test.assert($.findWaypoint(TestHelpers.fakeIterator([null, ""] as Array<String?>), "") == null);
+    return true;
+}
+
+(:test)
 function testNormalizeName(logger as Test.Logger) as Boolean {
     var app = new gimporterApp();
     Test.assertEqual(app.normalizeName("Tour_course.fit"), "Tour");
@@ -153,6 +163,21 @@ function testSearchCourseNoMatch(logger as Test.Logger) as Boolean {
 
     app.trackToStart = null;
     Test.assert(!app.searchCourse(TestHelpers.fakeIterator(["Tour"])));
+    return true;
+}
+
+(:test)
+function testSearchCourseSkipsUnnamed(logger as Test.Logger) as Boolean {
+    // Edge 530/1030: a stored course without a name crashed the search,
+    // and "" must not count as a prefix of every track name
+    var app = new gimporterApp();
+    app.trackToStart = "Tour.gpx";
+    Test.assert(!app.searchCourse(TestHelpers.fakeIterator([null, ""] as Array<String?>)));
+    Test.assert(app.getSimilarCourses() == null);
+    Test.assert(app.searchCourse(TestHelpers.fakeIterator([null, "Tour de Wien", ""] as Array<String?>)));
+    var similar = app.getSimilarCourses() as Array<Object>;
+    Test.assertEqual(similar.size(), 1);
+    Test.assertEqual(TestHelpers.nameOf(similar[0]), "Tour de Wien");
     return true;
 }
 
@@ -207,6 +232,11 @@ function testAppendContent(logger as Test.Logger) as Boolean {
     var last = items[2] as Array<Object>;
     Test.assertEqual(last[0], "waypoint");
     Test.assertEqual(last[1], "Dom");
+
+    // content without a name goes to the phone with ""
+    var unnamed = [] as Array;
+    $.appendContent(unnamed, "waypoint", TestHelpers.fakeIterator([null] as Array<String?>), fps);
+    Test.assertEqual((unnamed[0] as Array<Object>)[1], "");
     return true;
 }
 
