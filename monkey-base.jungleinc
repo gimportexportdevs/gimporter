@@ -48,6 +48,8 @@ edge_1000.resourcePath = resources-launcher-36x36;resources-fit;$(edge_1000.reso
 edge_520.resourcePath = resources-launcher-35x35;resources-fit;$(edge_520.resourcePath)
 edgeexplore.resourcePath = resources-launcher-36x36;resources-fit;$(edgeexplore.resourcePath)
 edgeexplore2.resourcePath = resources-launcher-36x36;resources-fit;$(edgeexplore2.resourcePath)
+edgeexplore3.resourcePath = resources-launcher-39x39;resources-fit;$(edgeexplore3.resourcePath)
+edgeexplore3plus.resourcePath = resources-launcher-39x39;resources-fit;$(edgeexplore3plus.resourcePath)
 edgemtb.resourcePath = resources-launcher-36x36;resources-fit;$(edgemtb.resourcePath)
 
 fenix5.resourcePath = resources-launcher-40x40;resources-fit;$(fenix5.resourcePath)
